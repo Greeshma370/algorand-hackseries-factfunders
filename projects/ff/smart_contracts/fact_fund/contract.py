@@ -14,3 +14,9 @@ class DonationContract(ARC4Contract):
     def get_total_donations(self) -> UInt64:
         """Returns the total amount of Algos donated."""
         return self.total_donations.value
+
+    @abimethod()
+    def request_withdrawal(self, amount: UInt64, reason: Bytes) -> None:
+        """Stores the withdrawal request."""
+        self.last_requested_amount.value = amount
+        self.last_requested_reason.value = reason

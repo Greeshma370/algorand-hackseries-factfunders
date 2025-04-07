@@ -69,4 +69,12 @@ def deploy() -> None:
         logger.error(f"Withdrawal request failed: {e}")
 
     # Call get_total_donations and log the result
+    try:
+        donation_result = app_client.get_total_donations(
+            sender=deployer.address,
+            signer=deployer.signer
+        )
+        logger.info(f"Total donations so far: {donation_result.return_value} microAlgos")
+    except LogicError as e:
+        logger.error(f"Failed to get total donations: {e}")
     

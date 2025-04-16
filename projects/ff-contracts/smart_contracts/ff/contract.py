@@ -38,6 +38,25 @@ class ProposalContract(ARC4Contract):
         )
         self.proposals[idx] = new_proposal
         self.no_of_proposals.value += UInt64(1)
+        
+    @abimethod()
+    def donate_proposal(self, proposal_id: UInt64) -> None:
+        assert self.proposals.contains(proposal_id), "Proposal doesn't exist"
+        prop = self.proposals[proposal_id]
+
+        assert prop.amount_raised < prop.amount_required, "Goal already reached"
+
+        amount = Txn.amount
+        donor = Txn.sender
+
+        # Create a donation entry
+        donation = Donation(account=donor, amount=amount)
+
+        # Update proposal's donations and amount raised
+        prop.donations.append(donation)
+        prop.amount_raised += amount
+
+        self.proposals[proposal_id] = prop  # Save updated proposal
 
    
    

@@ -23,5 +23,21 @@ class ProposalContract(ARC4Contract):
         # BoxMap to store all proposals using index (uint64) as key
         self.proposals = BoxMap(UInt64, Proposal)
 
+    @abimethod()
+    def create_proposal(self, name: String, title: String, description: String, amount_required: UInt64) -> None:
+        idx = self.no_of_proposals.value
+        new_proposal = Proposal(
+            name=name,
+            title=title,
+            description=description,
+            amount_required=amount_required,
+            created_by=Txn.sender,
+            donations=DynamicArray[Donation](),
+            amount_raised=UInt64(0),
+            claimed=Bool(False)
+        )
+        self.proposals[idx] = new_proposal
+        self.no_of_proposals.value += UInt64(1)
+
    
    

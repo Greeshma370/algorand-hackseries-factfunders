@@ -200,3 +200,33 @@ class ProposalContract(ARC4Contract):
         milestone.claimed = Bool(True)
         self.proposals[proposal_id].milestones[prop.current_milestone.native] = milestone.copy()
         self.proposals[proposal_id].current_milestone = UInt64(prop.current_milestone.native + 1)
+
+    @abimethod()
+    def refund_if_inactive(self, proposal_id: UInt64) -> None:
+        assert proposal_id in self.proposals, "Proposal doesn't exist"
+        prop = self.proposals[proposal_id].copy()
+        current_milestone = prop.milestones[prop.current_milestone.native].copy()
+        current_time = Global.latest_timestamp
+        time_difference = current_time - current_milestone.proof_submitted_time.native
+        
+        if time_difference > 7776000:  # 3 months = 7776000 seconds
+            # Refund to donors proportionately
+            remaining_amount = prop.amount_required.native - prop.amount_raised.native  # Amount that was not claimed
+            new_donors = DynamicArray[Donation]()
+            for idx in urange(prop.donations.length):
+                donation = prop.donations[idx].copy()
+                sender = Txn.sender
+                if donation.account.native == sender:
+                    # Refund the donor proportionately
+                    if donation.amount.native > 0:
+                        refund_amount = UInt64(remaining_amount * donation.amount.native // prop.amount_raised.native)
+                        itxn.Payment(
+                            sender=Global.current_application_address,
+                            receiver=donation.account.native,
+                            amount=refund_amount.native
+                        ).submit()
+                else:
+                    new_donors.append(donation.copy())
+                    
+            prop.donations = new_donors.copy()
+            self.proposals[proposal_id] = prop.copy()

@@ -1,4 +1,4 @@
-from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn
+from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn, itxn
 from algopy.arc4 import abimethod, Address, String, Bool, Struct, DynamicArray, UInt64
 # Define ARC4 Structs
 class Donation(Struct):
@@ -171,3 +171,32 @@ class ProposalContract(ARC4Contract):
         milestone_votes.append(Address(donor))
         self.milestoneVotes[proposal_id] = milestone_votes.copy()
         self.proposals[proposal_id].milestones[prop.current_milestone.native] = milestone.copy()
+
+    @abimethod()
+    def claim_milestone(self, proposal_id: UInt64) -> None:
+        assert proposal_id in self.proposals, "Proposal doesn't exist"
+        prop = self.proposals[proposal_id].copy()
+        milestone = prop.milestones[prop.current_milestone.native].copy()
+        
+        # Ensure voting period has ended
+        current_time = Global.latest_timestamp
+        assert milestone.proof_link != "", "Proof is not submitted yet"
+        assert milestone.proof_submitted_time.native != 0, "Proof not submitted yet"
+        assert current_time > milestone.voting_end_time.native, "Voting period not ended yet"
+        
+        assert milestone.votes_for.native > milestone.votes_against.native, "Milestone not approved"
+        assert not milestone.claimed, "Milestone already claimed"
+        
+        
+            # Transfer the milestone amount to the creator
+        creator = prop.created_by.native
+        itxn.Payment(
+            sender=Global.current_application_address,
+            receiver=creator,
+            amount=milestone.amount.native
+        ).submit()
+            
+        # Mark milestone as claimed
+        milestone.claimed = Bool(True)
+        self.proposals[proposal_id].milestones[prop.current_milestone.native] = milestone.copy()
+        self.proposals[proposal_id].current_milestone = UInt64(prop.current_milestone.native + 1)

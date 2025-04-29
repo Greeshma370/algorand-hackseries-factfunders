@@ -128,3 +128,46 @@ class ProposalContract(ARC4Contract):
         prop.milestones = new_milestones.copy()
         self.proposals[proposal_id] = prop.copy()
         self.milestoneVotes[proposal_id] = DynamicArray[Address]()  # Reset votes for the new milestone
+
+    @abimethod()
+    def vote_milestone(self, proposal_id: UInt64, vote: Bool) -> None:
+        assert proposal_id in self.proposals, "Proposal doesn't exist"
+        prop = self.proposals[proposal_id].copy()
+        milestone = prop.milestones[prop.current_milestone.native].copy()
+        
+        milestone_votes = self.milestoneVotes[proposal_id].copy()
+        for addr in milestone_votes:
+            assert addr.native != Txn.sender, "You have already voted for this milestone"
+            
+        assert prop.created_by.native != Txn.sender, "Creator cannot vote"
+        
+        assert milestone.proof_link != "", "Proof is not submitted yet"
+        
+        # Check if voting period has ended
+        current_time = Global.latest_timestamp
+        assert milestone.voting_end_time.native > current_time, "Voting period has ended"
+        
+        # Calculate weighted vote
+        donor = Txn.sender
+        amount_donated = NativeUInt64(0)
+        for idx in urange(prop.donations.length):
+            donation = prop.donations[idx].copy()
+            if donation.account.native == donor:
+                amount_donated = donation.amount.native
+                break
+            
+        
+        assert amount_donated > 0, "You have not donated to this proposal"
+
+        # Vote weighting by amount donated
+        weight = amount_donated * 100 // prop.amount_raised.native  # Integer-based calculation
+
+        if vote:
+            milestone.votes_for = UInt64(milestone.votes_for.native + weight)  # Normalize to percentage
+        else:
+            milestone.votes_against = UInt64(milestone.votes_against.native + weight)
+
+        milestone.total_voters = UInt64(milestone.total_voters.native + 1)
+        milestone_votes.append(Address(donor))
+        self.milestoneVotes[proposal_id] = milestone_votes.copy()
+        self.proposals[proposal_id].milestones[prop.current_milestone.native] = milestone.copy()

@@ -38,7 +38,7 @@ class ProposalContract(ARC4Contract):
         self.proposals = BoxMap(UInt64, Proposal)
         self.milestoneVotes = BoxMap(UInt64, DynamicArray[Address],key_prefix="milestoneVotes_")
         
-     @abimethod()
+    @abimethod()
     def create_proposal(self, name: String, title: String, description: String, amount_required: UInt64, milestones: DynamicArray[MilestoneInput]) -> None:
         idx = self.no_of_proposals.value
         final_milestones = DynamicArray[Milestone]()
@@ -98,3 +98,33 @@ class ProposalContract(ARC4Contract):
         prop.amount_raised = UInt64(prop.amount_raised.native + amount)
 
         self.proposals[proposal_id] = prop.copy()
+
+    @abimethod()
+    def submit_proof(self, proposal_id: UInt64, proof_link: String) -> None:
+        assert proposal_id in self.proposals, "Proposal doesn't exist"
+        prop = self.proposals[proposal_id].copy()
+
+        assert prop.created_by == Address(Txn.sender), "Only creator can submit proof"
+        assert prop.amount_raised >= prop.amount_required, "Goal not reached yet"
+        assert prop.current_milestone.native < prop.milestones.length, "All milestones already completed"
+        
+        current_time = Global.latest_timestamp
+        
+        new_milestones = DynamicArray[Milestone]()
+        for idx in urange(prop.milestones.length):
+            milestone = prop.milestones[idx].copy()
+            if idx == prop.current_milestone.native:
+                milestone.proof_link = proof_link
+                milestone.proof_submitted_time = UInt64(current_time)
+                milestone.voting_end_time = UInt64(current_time + 172800)  # Voting ends after 2 days (48 hours)
+                milestone.claimed = Bool(False)  # Reset claimed status
+                milestone.votes_for = UInt64(0)  # Reset votes
+                milestone.votes_against = UInt64(0)
+                milestone.total_voters = UInt64(0)
+                new_milestones.append(milestone.copy())
+            else:
+                new_milestones.append(milestone.copy())
+        
+        prop.milestones = new_milestones.copy()
+        self.proposals[proposal_id] = prop.copy()
+        self.milestoneVotes[proposal_id] = DynamicArray[Address]()  # Reset votes for the new milestone

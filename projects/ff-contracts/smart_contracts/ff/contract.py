@@ -1,3 +1,4 @@
+from algopy import ARC4Contract, GlobalState, BoxMap
 from algopy.arc4 import Address, String, Bool, Struct, DynamicArray, UInt64
 # Define ARC4 Structs
 class Donation(Struct):
@@ -30,3 +31,9 @@ class Proposal(Struct):
     milestones: DynamicArray[Milestone]
     current_milestone: UInt64
     created_at: UInt64  # timestamp of when the proposal is created
+# Proposal Contract class
+class ProposalContract(ARC4Contract):
+    def __init__(self) -> None:
+        self.no_of_proposals = GlobalState(UInt64(0), key="noOfProposals")
+        self.proposals = BoxMap(UInt64, Proposal)
+        self.milestoneVotes = BoxMap(UInt64, DynamicArray[Address],key_prefix="milestoneVotes_")

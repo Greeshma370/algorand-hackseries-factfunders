@@ -1,5 +1,5 @@
-from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange
-from algopy.arc4 import Address, String, Bool, Struct, DynamicArray, UInt64
+from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn
+from algopy.arc4 import abimethod, Address, String, Bool, Struct, DynamicArray, UInt64
 # Define ARC4 Structs
 class Donation(Struct):
     account: Address
@@ -80,3 +80,21 @@ class ProposalContract(ARC4Contract):
         self.proposals[idx] = new_proposal.copy()  # save proposal
         self.milestoneVotes[idx] = DynamicArray[Address]()  # initialize milestone votes
         self.no_of_proposals.value = UInt64(self.no_of_proposals.value.native + 1)
+        
+    @abimethod()
+    def donate_proposal(self, proposal_id: UInt64, payment: gtxn.PaymentTransaction) -> None:
+        assert proposal_id in self.proposals, "Proposal doesn't exist"
+        prop = self.proposals[proposal_id].copy()
+
+        assert prop.amount_raised < prop.amount_required, "Goal already reached"
+
+        amount = payment.amount
+        donor = payment.sender
+
+        assert payment.receiver == Global.current_application_address, "Payment must be sent to the contract address"
+
+        donation = Donation(account=Address(donor), amount=UInt64(amount))
+        prop.donations.append(donation.copy())  # append donation
+        prop.amount_raised = UInt64(prop.amount_raised.native + amount)
+
+        self.proposals[proposal_id] = prop.copy()

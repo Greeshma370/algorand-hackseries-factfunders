@@ -1,45 +1,147 @@
-# ff
+# Fact Funders
+A transparent, decentralized crowdfunding platform built on the Algorand blockchain that enables milestone-based funding releases with community governance.
 
-This starter full stack project has been generated using AlgoKit. See below for default getting started instructions.
+## Overview
 
-## Setup
+This smart contract implements a decentralized crowdfunding platform on Algorand that introduces a milestone-based funding release mechanism. Unlike traditional crowdfunding platforms where creators receive all funds at once, this platform releases funds incrementally as project milestones are completed and approved by donors through a weighted voting system.
 
-### Initial setup
-1. Clone this repository to your local machine.
-2. Ensure [Docker](https://www.docker.com/) is installed and operational. Then, install `AlgoKit` following this [guide](https://github.com/algorandfoundation/algokit-cli#install).
-3. Run `algokit project bootstrap all` in the project directory. This command sets up your environment by installing necessary dependencies, setting up a Python virtual environment, and preparing your `.env` file.
-4. In the case of a smart contract project, execute `algokit generate env-file -a target_network localnet` from the `ff-contracts` directory to create a `.env.localnet` file with default configuration for `localnet`.
-5. To build your project, execute `algokit project run build`. This compiles your project and prepares it for running.
-6. For project-specific instructions, refer to the READMEs of the child projects:
-   - Smart Contracts: [ff-contracts](projects/ff-contracts/README.md)
-   - Frontend Application: [ff-frontend](projects/ff-frontend/README.md)
+## Key Features
 
-> This project is structured as a monorepo, refer to the [documentation](https://github.com/algorandfoundation/algokit-cli/blob/main/docs/features/project/run.md) to learn more about custom command orchestration via `algokit project run`.
+- **Milestone-Based Funding**: Projects are divided into milestones (up to 5), each with specific funding amounts and deliverables.
+- **Community Governance**: Donors vote to approve or reject milestone completions based on proof submitted by creators.
+- **Weighted Voting**: Voting power is proportional to donation amounts, giving larger donors more influence.
+- **Time-Limited Voting**: Voting periods last 48 hours after proof submission.
+- **Automated Fund Distribution**: Funds are automatically released when milestones are approved.
+- **Protection Against Abandonment**: If a project remains inactive for 3 months, remaining funds can be refunded to donors.
 
-### Subsequently
+## Smart Contract Functions
 
-1. If you update to the latest source code and there are new dependencies, you will need to run `algokit project bootstrap all` again.
-2. Follow step 3 above.
+### `create_proposal`
+Creates a new funding proposal with specified milestones.
 
-## Tools
+**Parameters:**
+- `name`: Project identifier
+- `title`: Project title
+- `description`: Detailed project description
+- `amount_required`: Total funding goal (in microAlgos)
+- `milestones`: Array of milestone objects with name and amount fields
 
-This project makes use of Python and React to build Algorand smart contracts and to provide a base project configuration to develop frontends for your Algorand dApps and interactions with smart contracts. The following tools are in use:
+### `donate_proposal`
+Contributes funds to a project.
 
-- Algorand, AlgoKit, and AlgoKit Utils
-- Python dependencies including Poetry, Black, Ruff or Flake8, mypy, pytest, and pip-audit
-- React and related dependencies including AlgoKit Utils, Tailwind CSS, daisyUI, use-wallet, npm, jest, playwright, Prettier, ESLint, and Github Actions workflows for build validation
+**Parameters:**
+- `proposal_id`: ID of the target proposal
+- `payment`: Payment transaction details
 
-### VS Code
+### `submit_proof`
+Submits proof of milestone completion to initiate voting.
 
-It has also been configured to have a productive dev experience out of the box in [VS Code](https://code.visualstudio.com/), see the [backend .vscode](./backend/.vscode) and [frontend .vscode](./frontend/.vscode) folders for more details.
+**Parameters:**
+- `proposal_id`: ID of the target proposal
+- `proof_link`: Link to evidence demonstrating milestone completion
 
-## Integrating with smart contracts and application clients
+### `vote_milestone`
+Allows donors to vote on milestone completion.
 
-Refer to the [ff-contracts](projects/ff-contracts/README.md) folder for overview of working with smart contracts, [projects/ff-frontend](projects/ff-frontend/README.md) for overview of the React project and the [projects/ff-frontend/contracts](projects/ff-frontend/src/contracts/README.md) folder for README on adding new smart contracts from backend as application clients on your frontend. The templates provided in these folders will help you get started.
-When you compile and generate smart contract artifacts, your frontend component will automatically generate typescript application clients from smart contract artifacts and move them to `frontend/src/contracts` folder, see [`generate:app-clients` in package.json](projects/ff-frontend/package.json). Afterwards, you are free to import and use them in your frontend application.
+**Parameters:**
+- `proposal_id`: ID of the target proposal
+- `vote`: Boolean (true for approval, false for rejection)
 
-The frontend starter also provides an example of interactions with your FfClient in [`AppCalls.tsx`](projects/ff-frontend/src/components/AppCalls.tsx) component by default.
+### `claim_milestone`
+Releases milestone funds if voting approves completion.
 
-## Next Steps
+**Parameters:**
+- `proposal_id`: ID of the target proposal
 
-You can take this project and customize it to build your own decentralized applications on Algorand. Make sure to understand how to use AlgoKit and how to write smart contracts for Algorand before you start.
+### `refund_if_inactive`
+Refunds proportional donation amounts if project is inactive for 3 months.
+
+**Parameters:**
+- `proposal_id`: ID of the target proposal
+
+## Usage Example
+
+1. **Create a Project:**
+   ```python
+   from algosdk import v2client, transaction
+   from algopy import ARC4Contract
+   
+   # Initialize client
+   algod_client = v2client.algod.AlgodClient("YOUR_API_KEY", "YOUR_ALGOD_NODE")
+   
+   # Create proposal with milestones
+   milestones = [
+       {"name": "MVP Development", "amount": 5000000},  # 5 Algos
+       {"name": "Beta Release", "amount": 3000000},     # 3 Algos
+       {"name": "Final Product", "amount": 2000000}     # 2 Algos
+   ]
+   
+   proposal_contract.create_proposal(
+       "project-alpha",
+       "Revolutionary DeFi Product",
+       "A decentralized platform that revolutionizes finance...",
+       10000000,  # 10 Algos total
+       milestones
+   )
+   ```
+
+2. **Donate to Projects:**
+   ```python
+   # Donate 1 Algo to proposal ID 0
+   payment_txn = transaction.PaymentTxn(
+       sender=user_address,
+       receiver=contract_address,
+       amt=1000000,  # 1 Algo
+       sp=algod_client.suggested_params()
+   )
+   
+   proposal_contract.donate_proposal(0, payment_txn)
+   ```
+
+3. **Submit Milestone Proof:**
+   ```python
+   # After reaching funding goal and completing the first milestone
+   proposal_contract.submit_proof(
+       0, 
+       "https://github.com/myproject/milestone1-evidence"
+   )
+   ```
+
+4. **Vote on Milestone:**
+   ```python
+   # As a donor, vote to approve the milestone
+   proposal_contract.vote_milestone(0, True)  # True to approve
+   ```
+
+5. **Claim Milestone Funding:**
+   ```python
+   # After voting period ends with positive result
+   proposal_contract.claim_milestone(0)
+   ```
+
+## Deployment Instructions
+
+1. Compile the contract using AlgoPy:
+   ```
+   python -m algopy compile proposal_contract.py
+   ```
+
+2. Deploy to Algorand testnet or mainnet:
+   ```
+   python -m algopy deploy proposal_contract.py --network testnet
+   ```
+
+## Security Considerations
+
+- All milestone funds are held in escrow by the smart contract until milestone approval
+- Voting weights prevent "Sybil attacks" by requiring donations to have influence
+- Time-limited milestone submissions prevent indefinite fund locking
+- The refund mechanism protects donors if projects are abandoned
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

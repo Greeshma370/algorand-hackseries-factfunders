@@ -1,4 +1,4 @@
-from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn, itxn
+from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn, itxn, op
 from algopy.arc4 import abimethod, Address, String, Bool, Struct, DynamicArray, UInt64
 # Define ARC4 Structs
 class Donation(Struct):
@@ -160,7 +160,7 @@ class ProposalContract(ARC4Contract):
         assert amount_donated > 0, "You have not donated to this proposal"
 
         # Vote weighting by amount donated
-        weight = amount_donated * 100 // prop.amount_raised.native  # Integer-based calculation
+        weight = op.sqrt(amount_donated//NativeUInt64(1000000)) # Normalize weight to a reasonable range (e.g., sqrt of amount in microalgos)
 
         if vote:
             milestone.votes_for = UInt64(milestone.votes_for.native + weight)  # Normalize to percentage

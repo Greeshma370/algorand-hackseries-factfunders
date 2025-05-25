@@ -1348,13 +1348,10 @@ vote_milestone_after_for@10:
     assert // You have not donated to this proposal
     // smart_contracts/ff/contract.py:162-163
     // # Vote weighting by amount donated
-    // weight = amount_donated * 100 // prop.amount_raised.native  # Integer-based calculation
-    pushint 100 // 100
-    *
-    frame_dig 8
-    pushint 48 // 48
-    extract_uint64
+    // weight = op.sqrt(amount_donated//NativeUInt64(1000000)) # Normalize weight to a reasonable range (e.g., sqrt of amount in microalgos)
+    pushint 1000000 // 1000000
     /
+    sqrt
     // smart_contracts/ff/contract.py:165
     // if vote:
     frame_dig -1

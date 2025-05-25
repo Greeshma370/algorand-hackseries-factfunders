@@ -2,7 +2,7 @@ from smart_contracts.artifacts.ff.proposal_contract_client import (ProposalContr
 from algokit_utils import AlgorandClient
 from algosdk.atomic_transaction_composer import EmptySigner
 from rich.pretty import pprint
-app_id = 1002
+app_id = 1006
 
 proposal_id = 0
 

@@ -1,51 +1,47 @@
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+}
+
+export interface Feature {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+}
 
 export interface Milestone {
   id: string;
-  title: string;
-  description: string;
+  name: string;
   amount: number;
-  dueDate: string;
   completed: boolean;
-  proofLink?: string;
-  votes: {
-    yes: number;
-    no: number;
-  };
-  claimed: boolean;
 }
 
-export interface Proposal {
+export interface Fundraiser {
   id: string;
   title: string;
   description: string;
-  creatorId: string;
-  creatorName: string;
-  category: string;
-  target: number;
-  raised: number;
-  backers: number;
-  createdAt: string;
-  endDate: string;
-  status: 'active' | 'funded' | 'completed' | 'expired';
+  creator: string;
   imageUrl: string;
+  totalAmount: number;
+  raisedAmount: number;
+  category: string;
   milestones: Milestone[];
+  createdAt: string;
+  daysLeft: number;
 }
 
-export interface Donation {
-  id: string;
-  proposalId: string;
-  userId: string;
-  amount: number;
-  date: string;
-}
-
-export type UserRole = 'creator' | 'donor' | 'both';
-
-export interface User {
+export interface Founder {
   id: string;
   name: string;
-  email: string;
-  role: UserRole;
-  donations: Donation[];
-  createdProposals: string[];
+  role: string;
+  imageUrl: string;
+  bio: string;
+  socialLinks: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+  };
 }

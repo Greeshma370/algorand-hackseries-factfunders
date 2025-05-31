@@ -12,6 +12,7 @@
   "dependencies": {
     "@blockshake/defly-connect": "^1.2.1",
     "@perawallet/connect": "^1.4.2",
+    "@tailwindcss/vite": "^4.1.8",
     "@txnlab/use-wallet": "^4.1.0",
     "@txnlab/use-wallet-react": "^4.1.0",
     "@txnlab/use-wallet-ui-react": "^0.2.3",
@@ -21,7 +22,8 @@
     "lute-connect": "^1.6.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.1"
+    "react-router-dom": "^6.22.1",
+    "tailwindcss": "^4.1.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
@@ -33,8 +35,6 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2"

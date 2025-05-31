@@ -8,7 +8,7 @@ import {
   WalletManager,
   WalletProvider,
 } from '@txnlab/use-wallet-react'
-import { WalletUIProvider, WalletButton } from '@txnlab/use-wallet-ui-react'
+import { WalletUIProvider } from '@txnlab/use-wallet-ui-react'
 
 const walletManager = new WalletManager({
   wallets: [

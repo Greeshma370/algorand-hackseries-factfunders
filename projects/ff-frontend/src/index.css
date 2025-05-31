@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@source '../node_modules/@txnlab/use-wallet-ui-react';
 
 @layer base {
   html {

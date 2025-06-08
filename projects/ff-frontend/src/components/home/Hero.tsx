@@ -19,7 +19,7 @@ const Hero: React.FC = () => {
               <span className="text-sm font-medium">Powered by Algorand Blockchain</span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              Transparent Crowdfunding with Milestone-Based Releases
+              Decentralized Crowdfunding with Milestone-Based Releases
             </h1>
             <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto lg:mx-0">
               Fact Funders creates trust through community governance and blockchain transparency. 
@@ -36,11 +36,11 @@ const Hero: React.FC = () => {
                   Explore Projects
                 </Button>
               </Link>
-              <Link to="/donate">
+              <Link to="/create">
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="border-white text-white hover:bg-white hover:bg-opacity-10"
+                  className="text-white border border-white hover:bg-blue-500"
                 >
                   Start a Fundraiser
                 </Button>

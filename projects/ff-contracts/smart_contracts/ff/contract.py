@@ -1,9 +1,9 @@
 from algopy import ARC4Contract, GlobalState, BoxMap, Txn, UInt64 as NativeUInt64, Global, urange, gtxn, itxn, op
 from algopy.arc4 import abimethod, Address, String, Bool, Struct, DynamicArray, UInt64
 # Define ARC4 Structs
-class Donation(Struct):
-    account: Address
-    amount: UInt64
+class DonationBoxKey(Struct):
+    proposal_id: UInt64
+    donor: Address
 
 class Milestone(Struct):
     name: String
@@ -24,22 +24,29 @@ class Proposal(Struct):
     name: String
     title: String
     description: String
+    category: String
     amount_required: UInt64
     created_by: Address
-    donations: DynamicArray[Donation]
     amount_raised: UInt64
     milestones: DynamicArray[Milestone]
+    no_of_donations: UInt64
+    no_of_unique_donors: UInt64
     current_milestone: UInt64
     created_at: UInt64  # timestamp of when the proposal is created
+
+voting_time = 180 # 172800 # 2 days
+expiration_time = 240 # 7776000 # 3 months
+    
 # Proposal Contract class
 class ProposalContract(ARC4Contract):
     def __init__(self) -> None:
         self.no_of_proposals = GlobalState(UInt64(0), key="noOfProposals")
         self.proposals = BoxMap(UInt64, Proposal)
         self.milestoneVotes = BoxMap(UInt64, DynamicArray[Address],key_prefix="milestoneVotes_")
+        self.donations = BoxMap(DonationBoxKey, UInt64)
         
     @abimethod()
-    def create_proposal(self, name: String, title: String, description: String, amount_required: UInt64, milestones: DynamicArray[MilestoneInput]) -> None:
+    def create_proposal(self, name: String, title: String, description: String, category: String, amount_required: UInt64, milestones: DynamicArray[MilestoneInput]) -> None:
         idx = self.no_of_proposals.value
         final_milestones = DynamicArray[Milestone]()
         milestones_total = NativeUInt64(0)
@@ -69,10 +76,12 @@ class ProposalContract(ARC4Contract):
             name=name,
             title=title,
             description=description,
+            category=category,
             amount_required=amount_required,
             created_by=Address(Txn.sender),
-            donations=DynamicArray[Donation](),
             amount_raised=UInt64(0),
+            no_of_donations=UInt64(0),
+            no_of_unique_donors=UInt64(0),
             milestones=final_milestones.copy(),
             current_milestone=UInt64(0),
             created_at=UInt64(Global.latest_timestamp)  # store proposal creation timestamp
@@ -90,11 +99,17 @@ class ProposalContract(ARC4Contract):
 
         amount = payment.amount
         donor = payment.sender
-
+        donation_box_key = DonationBoxKey(proposal_id=proposal_id, donor=Address(donor))
         assert payment.receiver == Global.current_application_address, "Payment must be sent to the contract address"
 
-        donation = Donation(account=Address(donor), amount=UInt64(amount))
-        prop.donations.append(donation.copy())  # append donation
+        if donation_box_key not in self.donations:
+            prop.no_of_unique_donors = UInt64(prop.no_of_unique_donors.native + 1)
+            self.donations[donation_box_key] = UInt64(amount)
+        else:
+            self.donations[donation_box_key] = UInt64(self.donations[donation_box_key].native + amount)
+
+        prop.no_of_donations = UInt64(prop.no_of_donations.native + 1)
+
         prop.amount_raised = UInt64(prop.amount_raised.native + amount)
 
         self.proposals[proposal_id] = prop.copy()
@@ -116,7 +131,7 @@ class ProposalContract(ARC4Contract):
             if idx == prop.current_milestone.native:
                 milestone.proof_link = proof_link
                 milestone.proof_submitted_time = UInt64(current_time)
-                milestone.voting_end_time = UInt64(current_time + 172800)  # Voting ends after 2 days (48 hours)
+                milestone.voting_end_time = UInt64(current_time + voting_time)  # Voting ends after 2 days (48 hours)
                 milestone.claimed = Bool(False)  # Reset claimed status
                 milestone.votes_for = UInt64(0)  # Reset votes
                 milestone.votes_against = UInt64(0)
@@ -146,21 +161,15 @@ class ProposalContract(ARC4Contract):
         # Check if voting period has ended
         current_time = Global.latest_timestamp
         assert milestone.voting_end_time.native > current_time, "Voting period has ended"
+
+        donator_box_key = DonationBoxKey(proposal_id=proposal_id, donor=Address(Txn.sender))
+        assert donator_box_key in self.donations, "You have not donated to this proposal"
+        amount_donated = self.donations[donator_box_key]
         
-        # Calculate weighted vote
-        donor = Txn.sender
-        amount_donated = NativeUInt64(0)
-        for idx in urange(prop.donations.length):
-            donation = prop.donations[idx].copy()
-            if donation.account.native == donor:
-                amount_donated = donation.amount.native
-                break
-            
-        
-        assert amount_donated > 0, "You have not donated to this proposal"
+        assert amount_donated >= 1000000, "Should have donated more than 1 algos to vote"
 
         # Vote weighting by amount donated
-        weight = op.sqrt(amount_donated//NativeUInt64(1000000)) # Normalize weight to a reasonable range (e.g., sqrt of amount in microalgos)
+        weight = op.sqrt(amount_donated.native//NativeUInt64(1000000)) # Normalize weight to a reasonable range (e.g., sqrt of amount in microalgos)
 
         if vote:
             milestone.votes_for = UInt64(milestone.votes_for.native + weight)  # Normalize to percentage
@@ -168,7 +177,7 @@ class ProposalContract(ARC4Contract):
             milestone.votes_against = UInt64(milestone.votes_against.native + weight)
 
         milestone.total_voters = UInt64(milestone.total_voters.native + 1)
-        milestone_votes.append(Address(donor))
+        milestone_votes.append(Address(Txn.sender))
         self.milestoneVotes[proposal_id] = milestone_votes.copy()
         self.proposals[proposal_id].milestones[prop.current_milestone.native] = milestone.copy()
 
@@ -208,25 +217,20 @@ class ProposalContract(ARC4Contract):
         current_milestone = prop.milestones[prop.current_milestone.native].copy()
         current_time = Global.latest_timestamp
         time_difference = current_time - current_milestone.proof_submitted_time.native
+
+        donator_box_key = DonationBoxKey(proposal_id=proposal_id, donor=Address(Txn.sender))
+        assert donator_box_key in self.donations, "You have not donated to this proposal"
+        amount_donated = self.donations[donator_box_key]
         
-        if time_difference > 7776000:  # 3 months = 7776000 seconds
+        if time_difference > expiration_time:  # 3 months = 7776000 seconds
             # Refund to donors proportionately
             remaining_amount = prop.amount_required.native - prop.amount_raised.native  # Amount that was not claimed
-            new_donors = DynamicArray[Donation]()
-            for idx in urange(prop.donations.length):
-                donation = prop.donations[idx].copy()
-                sender = Txn.sender
-                if donation.account.native == sender:
-                    # Refund the donor proportionately
-                    if donation.amount.native > 0:
-                        refund_amount = UInt64(remaining_amount * donation.amount.native // prop.amount_raised.native)
-                        itxn.Payment(
-                            sender=Global.current_application_address,
-                            receiver=donation.account.native,
-                            amount=refund_amount.native
-                        ).submit()
-                else:
-                    new_donors.append(donation.copy())
-                    
-            prop.donations = new_donors.copy()
-            self.proposals[proposal_id] = prop.copy()
+            if amount_donated > 0:
+                # Refund the donor proportionately
+                refund_amount = UInt64(remaining_amount * amount_donated.native // prop.amount_raised.native)
+                itxn.Payment(
+                    sender=Global.current_application_address,
+                    receiver=Txn.sender,
+                    amount=refund_amount.native
+                ).submit()
+                self.donations[donator_box_key] = UInt64(0)

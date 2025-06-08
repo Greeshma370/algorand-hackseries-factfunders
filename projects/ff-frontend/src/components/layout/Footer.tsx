@@ -16,18 +16,18 @@ const Footer: React.FC = () => {
               A transparent, decentralized crowdfunding platform built on the Algorand blockchain.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
-                <Twitter size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+              <a href="https://github.com/Greeshma370/algorand-hackseries-factfunders" className="text-gray-400 hover:text-white transition-colors duration-200">
                 <Github size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+              
+              <a href="https://x.com/GreeshmaGu1242" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <Twitter size={20} />
+              </a>
+              
+              <a href="https://www.linkedin.com/in/greeshma-guntupalli" className="text-gray-400 hover:text-white transition-colors duration-200">
                 <Linkedin size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
-                <Mail size={20} />
-              </a>
+              
             </div>
           </div>
 
@@ -49,16 +49,6 @@ const Footer: React.FC = () => {
                   Contact
                 </Link>
               </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
-                  Terms of Service
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
-                  Privacy Policy
-                </a>
-              </li>
             </ul>
           </div>
 
@@ -66,22 +56,22 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Categories</h3>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <a href="#/donate?category=medical" className="text-gray-400 hover:text-white transition-colors duration-200">
                   Medical
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <a href="#/donate?category=education" className="text-gray-400 hover:text-white transition-colors duration-200">
                   Education
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <a href="#/donate?category=entrepreneurship" className="text-gray-400 hover:text-white transition-colors duration-200">
                   Entrepreneurship
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <a href="#/donate?category=entertainment" className="text-gray-400 hover:text-white transition-colors duration-200">
                   Entertainment
                 </a>
               </li>

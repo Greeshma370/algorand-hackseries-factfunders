@@ -1,5 +1,11 @@
 import { Buffer } from 'buffer';
-window.Buffer = Buffer;
+// Ensure Buffer is available globally for wallet libraries
+if (typeof window !== 'undefined') {
+  window.Buffer = Buffer;
+}
+if (typeof globalThis !== 'undefined') {
+  (globalThis as any).Buffer = Buffer;
+}
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

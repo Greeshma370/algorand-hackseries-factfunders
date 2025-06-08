@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-client": "npx ./node_modules/@algorandfoundation/algokit-client-generator generate -a ../ff-contracts/smart_contracts/artifacts/ff/ProposalContract.arc56.json -o ./src/contracts/ProposalContractClient.ts"
   },
   "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.1.0",
     "@blockshake/defly-connect": "^1.2.1",
     "@perawallet/connect": "^1.4.2",
     "@tailwindcss/vite": "^4.1.8",
@@ -18,14 +20,18 @@
     "@txnlab/use-wallet-ui-react": "^0.2.3",
     "@walletconnect/modal": "^2.7.0",
     "@walletconnect/sign-client": "^2.21.0",
+    "algosdk": "^3.3.1",
+    "buffer": "^6.0.3",
     "lucide-react": "^0.344.0",
     "lute-connect": "^1.6.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.1",
+    "react-toastify": "^11.0.5",
     "tailwindcss": "^4.1.8"
   },
   "devDependencies": {
+    "@algorandfoundation/algokit-client-generator": "^5.0.0",
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

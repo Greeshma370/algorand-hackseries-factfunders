@@ -42,8 +42,8 @@ export const features: Feature[] = [
   },
   {
     id: '3',
-    title: 'Weighted Voting',
-    description: 'Voting power is proportional to donation amounts for fair representation',
+    title: 'Quadratic Voting',
+    description: 'Voting power is proportional to the square root of donation amounts',
     icon: 'scale'
   },
   {
@@ -138,26 +138,26 @@ export const fundraisers: Fundraiser[] = [
 export const founders: Founder[] = [
   {
     id: '1',
-    name: 'Alexandra Chen',
-    role: 'Co-Founder & CEO',
-    imageUrl: 'https://images.pexels.com/photos/3796217/pexels-photo-3796217.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    bio: 'Blockchain technology expert with over 10 years of experience in fintech. Previously led development at major cryptocurrency exchanges.',
+    name: 'Greeshma Guntupalli',
+    role: 'Smart Contract Developer',
+    imageUrl: 'https://drive.google.com/file/d/1EkRdXBnDJt-IlZCFdwYZjz1zVrCTqJoA/view?usp=sharing',
+    bio: 'Smart contract specialist with a background in decentralized finance and crowdfunding platforms. Passionate about democratizing access to funding.',
     socialLinks: {
-      twitter: 'https://twitter.com/alexchen',
-      linkedin: 'https://linkedin.com/in/alexchen',
-      github: 'https://github.com/alexchen'
+      twitter: 'https://x.com/GreeshmaGu1242',
+      linkedin: 'https://www.linkedin.com/in/greeshma-guntupalli',
+      github: 'https://github.com/Greeshma370'
     }
   },
   {
     id: '2',
-    name: 'Marcus Johnson',
-    role: 'Co-Founder & CTO',
-    imageUrl: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    bio: 'Smart contract specialist with a background in decentralized finance and crowdfunding platforms. Passionate about democratizing access to funding.',
+    name: 'Akshaya Tirupathi',
+    role: 'Frontend Developer',
+    imageUrl: 'https://drive.google.com/file/d/16CG1plM9p3pJTcC6sdGKYcA3I4CIZCaQ/view?usp=sharing',
+    bio: 'Frontend developer with a focus on building responsive, user-friendly interfaces. Passionate about creating accessible and intuitive web experiences.',
     socialLinks: {
-      twitter: 'https://twitter.com/marcusjohnson',
-      linkedin: 'https://linkedin.com/in/marcusjohnson',
-      github: 'https://github.com/marcusjohnson'
+      twitter: 'https://x.com/akshaya33350',
+      linkedin: 'https://www.linkedin.com/in/akshaya-tirupathi-419b50313/',
+      github: 'https://github.com/akshayaaa727'
     }
   }
 ];

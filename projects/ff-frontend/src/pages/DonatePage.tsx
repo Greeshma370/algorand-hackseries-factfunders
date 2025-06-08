@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import StartFundraiserBanner from '../components/donate/StartFundraiserBanner';
 import FundraiserList from '../components/donate/FundraiserList';
+import { getProposalsLength } from '../data/getters';
 
 const DonatePage: React.FC = () => {
+  
+  useEffect(() => {
+    getProposalsLength().then((length) => {
+      console.log(length);
+    });
+  }, []);
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-12">

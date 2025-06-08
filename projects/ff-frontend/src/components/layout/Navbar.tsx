@@ -67,6 +67,14 @@ const Navbar: React.FC = () => {
                 Donate
               </Link>
               <Link
+                to="/create"
+                className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
+                  isActive("/create") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
+                }`}
+              >
+                Create Fundraiser
+              </Link>
+              <Link
                 to="/contact"
                 className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
                   isActive("/contact") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
@@ -105,6 +113,14 @@ const Navbar: React.FC = () => {
                 }`}
               >
                 Donate
+              </Link>
+              <Link
+                to="/create"
+                className={`text-sm font-medium px-3 py-2 rounded-md ${
+                  isActive("/create") ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Create Fundraiser
               </Link>
               <Link
                 to="/contact"

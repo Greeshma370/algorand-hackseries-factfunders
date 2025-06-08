@@ -1,20 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Search, Filter } from 'lucide-react';
 import FundraiserCard from './FundraiserCard';
-import { fundraisers } from '../../data/mockData';
+import { getProposal, getProposalsLength, categories } from '../../data/getters';
+import { ReadableProposal } from '../../types';
 
 const FundraiserList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   
-  const filteredFundraisers = fundraisers.filter(fundraiser => {
-    const matchesSearch = fundraiser.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         fundraiser.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === '' || fundraiser.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const [proposals, setProposals] = useState<ReadableProposal[]>([]);
+
+  useEffect(() => {
+    const fetchProposals = async () => {
+      const length = await getProposalsLength();
+      const proposalsPromises = [];
+      for (let i = 0; i < length; i++) {
+        proposalsPromises.push(getProposal(BigInt(i)));
+      }
+      const proposals = await Promise.all(proposalsPromises);
+      const filteredProposals = proposals.filter((proposal): proposal is ReadableProposal => proposal !== undefined);
+      setProposals(filteredProposals);
+      console.log(filteredProposals);
+    };
+    fetchProposals();
+  }, []);
+
+  const filteredFundraisers = useMemo(() => {
+    return proposals.filter(fundraiser => {
+      const matchesSearch = fundraiser.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           fundraiser.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = categoryFilter === '' || fundraiser.category === categoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [proposals, searchTerm, categoryFilter]);
   
   return (
     <div>
@@ -44,10 +64,9 @@ const FundraiserList: React.FC = () => {
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
                 <option value="">All Categories</option>
-                <option value="Medical">Medical</option>
-                <option value="Education">Education</option>
-                <option value="Entrepreneurship">Entrepreneurship</option>
-                <option value="Entertainment">Entertainment</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -61,8 +80,8 @@ const FundraiserList: React.FC = () => {
       
       {filteredFundraisers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredFundraisers.map(fundraiser => (
-            <FundraiserCard key={fundraiser.id} fundraiser={fundraiser} />
+          {filteredFundraisers.map(proposal => (
+            <FundraiserCard key={proposal.id} proposal={proposal} />
           ))}
         </div>
       ) : (

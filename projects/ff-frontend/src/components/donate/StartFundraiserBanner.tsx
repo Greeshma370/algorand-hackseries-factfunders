@@ -1,33 +1,27 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
-import Button from '../common/Button';
-
+import React from "react";
+import { ArrowRight } from "lucide-react";
+import Button from "../common/Button";
+import { Link } from "react-router-dom";
 const StartFundraiserBanner: React.FC = () => {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl overflow-hidden shadow-lg mb-12">
       <div className="px-6 py-10 sm:px-10 sm:py-12 md:flex md:items-center md:justify-between">
         <div className="max-w-xl">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Ready to fund your project?
-          </h2>
-          <p className="mt-3 text-lg text-blue-100">
-            Create a transparent fundraising campaign with milestone-based funding releases.
-          </p>
+          <h2 className="text-2xl font-bold text-white sm:text-3xl">Ready to fund your project?</h2>
+          <p className="mt-3 text-lg text-blue-100">Create a transparent fundraising campaign with milestone-based funding releases.</p>
           <div className="mt-8 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={ArrowRight}
-              iconPosition="right"
-              className="bg-white text-blue-600 hover:bg-blue-50"
-            >
-              Start a Fundraiser
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white text-white hover:bg-white hover:bg-opacity-10"
-            >
+            <Link to="/create">
+              <Button
+                variant="primary"
+                size="lg"
+                icon={ArrowRight}
+                iconPosition="right"
+                className="bg-white text-blue-600 hover:bg-blue-50"
+              >
+                Start a Fundraiser
+              </Button>
+            </Link>
+            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:bg-opacity-10">
               Learn More
             </Button>
           </div>

@@ -49,10 +49,10 @@ const Features: React.FC = () => {
             </p>
             <div className="flex justify-center">
               <a 
-                href="#" 
+                href="https://algorand.co/" 
                 className="text-blue-600 font-medium hover:text-blue-800 transition-colors duration-200"
               >
-                Learn more about our technology →
+                Learn more about blockchain technology→
               </a>
             </div>
           </div>

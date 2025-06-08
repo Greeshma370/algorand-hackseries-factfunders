@@ -18,7 +18,7 @@ def deploy() -> None:
         ProposalContractFactory, default_sender=deployer_.address
     )
 
-    algorand.client.algod.set_timestamp_offset(0)
+    #algorand.client.algod.set_timestamp_offset(0)
 
     app_client, result = factory.deploy(
         on_update=algokit_utils.OnUpdate.AppendApp,

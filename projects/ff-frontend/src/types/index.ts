@@ -45,3 +45,31 @@ export interface Founder {
     github?: string;
   };
 }
+
+export interface ReadableMilestone {
+  name: string;
+  amount: number;
+  proofLink: string;
+  votesFor: number;
+  votesAgainst: number;
+  totalVoters: number;
+  claimed: boolean;
+  proofSubmittedTime: number;
+  votingEndTime: number;
+}
+
+export interface ReadableProposal {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  category: string;
+  amountRequired: number;
+  milestones: ReadableMilestone[];
+  createdAt: number;
+  createdBy: string;
+  amountRaised: number;
+  noOfDonations: number;
+  noOfUniqueDonors: number;
+  currentMilestone: number;
+}

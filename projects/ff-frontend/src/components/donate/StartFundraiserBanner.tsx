@@ -16,14 +16,11 @@ const StartFundraiserBanner: React.FC = () => {
                 size="lg"
                 icon={ArrowRight}
                 iconPosition="right"
-                className="bg-white text-blue-600 hover:bg-blue-50"
+                className="bg-blue text-white hover:bg-blue-50 hover:bg-opacity-10"
               >
                 Start a Fundraiser
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:bg-opacity-10">
-              Learn More
-            </Button>
           </div>
         </div>
         <div className="mt-6 md:mt-0 md:ml-6 flex-shrink-0">

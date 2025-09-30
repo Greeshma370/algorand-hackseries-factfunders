@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { Plus, Trash2, DollarSign } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast, toastMessages } from "../utils/toast";
 import Button from "../components/common/Button";
-import { appClient, syncTimeOffsetInLocalNet } from "../data/clients";
+import { algorandClient, appClient, syncTimeOffsetInLocalNet } from "../data/clients";
 import { useWallet } from "@txnlab/use-wallet-react";
 import * as algokit from "@algorandfoundation/algokit-utils";
 import { categories } from "../data/getters";
 import { useNavigate } from "react-router-dom";
+import { APP_ADDRESS } from "../data/config";
 
 interface Milestone {
   id: string;
@@ -141,6 +142,12 @@ const CreateFundraiserPage: React.FC = () => {
 
     try {
       await syncTimeOffsetInLocalNet();
+      const paymentTxn = await algorandClient.createTransaction.payment({
+        sender: activeAddress,
+        receiver: APP_ADDRESS,
+        amount: algokit.algos(2),
+        signer: transactionSigner,
+      });
       const result = await appClient.send.createProposal({
         args: {
           name: formData.name,
@@ -149,6 +156,7 @@ const CreateFundraiserPage: React.FC = () => {
           category: formData.category,
           amountRequired: algokit.algos(BigInt(formData.amountRequired)).microAlgos,
           milestones: formData.milestones.map((milestone) => [milestone.name, algokit.algos(BigInt(milestone.amount)).microAlgos]),
+          payment: paymentTxn,
         },
         signer: transactionSigner,
         sender: activeAddress,

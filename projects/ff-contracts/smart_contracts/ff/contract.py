@@ -46,7 +46,10 @@ class ProposalContract(ARC4Contract):
         self.donations = BoxMap(DonationBoxKey, UInt64)
         
     @abimethod()
-    def create_proposal(self, name: String, title: String, description: String, category: String, amount_required: UInt64, milestones: DynamicArray[MilestoneInput]) -> None:
+    def create_proposal(self, name: String, title: String, description: String, category: String, amount_required: UInt64, milestones: DynamicArray[MilestoneInput],payment: gtxn.PaymentTransaction) -> None:
+        assert payment.amount == 2_000_000, "Must pay exactly 2 Algos to create a proposal"
+        assert payment.receiver == Global.current_application_address, "Payment must be sent to the contract address"
+        assert payment.sender == Txn.sender, "Payment must be from the proposal creator"
         idx = self.no_of_proposals.value
         final_milestones = DynamicArray[Milestone]()
         milestones_total = NativeUInt64(0)

@@ -300,3 +300,4 @@ class ProposalContract(ARC4Contract):
 
         fund.claimed = Bool(True)
         self.futureFunds[fund_id] = fund.copy()
+    

@@ -21,7 +21,11 @@ const DonatePage: React.FC = () => {
       </div>
       <iframe title="tinyman swap widget"
       src="https://tinymanorg.github.io/swap-widget/?platformName=FactFunders&network=mainnet&themeVariables=eyJ0aGVtZSI6ImxpZ2h0IiwiY29udGFpbmVyQnV0dG9uQmciOiIjMmNiY2EyIiwid2lkZ2V0QmciOiIjYTA1NmZmIiwiaGVhZGVyQnV0dG9uQmciOiIjODM0NmQxIiwiaGVhZGVyQnV0dG9uVGV4dCI6IiNmZmZmZmYiLCJoZWFkZXJUaXRsZSI6IiNmZmZmZmYiLCJjb250YWluZXJCdXR0b25UZXh0IjoiI2ZmZmZmZiIsImlmcmFtZUJnIjoiI0Y4RjhGOCIsImJvcmRlclJhZGl1c1NpemUiOiJtZWRpdW0iLCJ0aXRsZSI6IlN3YXAiLCJzaG91bGREaXNwbGF5VGlueW1hbkxvZ28iOmZhbHNlfQ%3D%3D&assetIn=0&assetOut=31566704"
+<<<<<<< HEAD
       // style="width: 415px; height: 600px; border: none;"
+=======
+      style="width: 415px; height: 600px; border: none;"
+>>>>>>> b9b51ff99f945f3648bc94adb727131dd540a7cc
       sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />
       <StartFundraiserBanner />
       <FundraiserList />

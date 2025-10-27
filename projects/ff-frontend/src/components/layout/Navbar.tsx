@@ -75,6 +75,14 @@ const Navbar: React.FC = () => {
                 Create Fundraiser
               </Link>
               <Link
+                to="/fund-future"
+                className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
+                  isActive("/create") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
+                }`}
+              >
+                Future Funds
+              </Link>
+              <Link
                 to="/contact"
                 className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
                   isActive("/contact") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"

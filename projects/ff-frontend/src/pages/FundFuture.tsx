@@ -1,124 +1,133 @@
-import React, { useEffect, useMemo, useState } from "react";
-
-// FutureFundPage.tsx
-// React + TypeScript component to display previous deposits, claim matured deposits,
-// and a placeholder button to add deposits.
-// TODO: Replace mock data / simulated actions with real Algorand SDK calls and
-// wallet integration (e.g. algosdk or @algo-builder or wallet-connect).
-
-type Address = string;
-
-type FutureFund = {
-  id: string; // local id for UI
-  primary: Address;
-  backup: Address;
-  unlock_time: number; // unix seconds
-  amount: number; // amount in microAlgos (or smallest unit)
-  claimed: boolean;
-};
+import { useEffect, useMemo, useState } from "react";
+import AddDepositModal, { DepositFormData } from "../components/future-fund/AddDepositModal";
+import { ReadableFutureFund } from "../data/getters";
+import { getFutureFunds } from "../data/getters";
+import { showErrorToast, showSuccessToast, toastMessages } from "../utils/toast";
+import { useWallet } from "@txnlab/use-wallet-react";
+import { algorandClient, appClient, syncTimeOffsetInLocalNet } from "../data/clients";
+import { APP_ADDRESS } from "../data/config";
+import * as algokit from "@algorandfoundation/algokit-utils";
 
 export default function FutureFundPage() {
-  const [deposits, setDeposits] = useState<FutureFund[]>([]);
+  const { activeAddress, transactionSigner } = useWallet();
+  const [deposits, setDeposits] = useState<ReadableFutureFund[]>([]);
   const [loading, setLoading] = useState(false);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // mock initial data — replace with on-chain fetch
   useEffect(() => {
+    if (!activeAddress || !transactionSigner) {
+      showErrorToast(toastMessages.futureFund.notConnected);
+      return;
+    }
     setLoading(true);
-    // simulate fetch delay
-    const t = setTimeout(() => {
-      const now = Math.floor(Date.now() / 1000);
-      setDeposits([
-        {
-          id: "d1",
-          primary: "ALGO_PRIMARY_ADDRESS_1",
-          backup: "ALGO_BACKUP_ADDRESS_1",
-          unlock_time: now - 60 * 60 * 24, // matured yesterday
-          amount: 5_000_000, // 5 ALGO (if microAlgos)
-          claimed: false,
-        },
-        {
-          id: "d2",
-          primary: "ALGO_PRIMARY_ADDRESS_2",
-          backup: "ALGO_BACKUP_ADDRESS_2",
-          unlock_time: now + 60 * 60 * 24 * 3, // in 3 days
-          amount: 10_000_000,
-          claimed: false,
-        },
-        {
-          id: "d3",
-          primary: "ALGO_PRIMARY_ADDRESS_3",
-          backup: "ALGO_BACKUP_ADDRESS_3",
-          unlock_time: now - 60 * 60 * 24 * 10,
-          amount: 2_500_000,
-          claimed: true,
-        },
-      ]);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  const nowSec = useMemo(() => Math.floor(Date.now() / 1000), []);
+    getFutureFunds(activeAddress)
+      .then((futureFunds) => {
+        setDeposits(futureFunds);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setLoading(false);
+      });
+  }, [activeAddress]);
 
   const formatDate = (unixSec: number) => {
     const d = new Date(unixSec * 1000);
     return d.toLocaleString();
   };
 
-  const microAlgosToAlgos = (micro: number) => {
-    return (micro / 1_000_000).toFixed(6).replace(/\.0+$/g, "");
+  const isMatured = (unlockTime: number) => {
+    return Math.floor(Date.now() / 1000) >= unlockTime;
   };
 
-  const isMatured = (unlock_time: number) => {
-    return Math.floor(Date.now() / 1000) >= unlock_time;
-  };
-
-  // Placeholder: claim action (UI-only simulation)
-  const claimDeposit = async (id: string) => {
+  const claimDeposit = async (id: number) => {
     const d = deposits.find((x) => x.id === id);
     if (!d) return;
     if (d.claimed) {
-      alert("This deposit is already claimed.");
+      showErrorToast(toastMessages.futureFund.alreadyClaimed);
       return;
     }
-    if (!isMatured(d.unlock_time)) {
-      alert("This deposit has not matured yet.");
+    if (!isMatured(d.unlockTime)) {
+      showErrorToast(toastMessages.futureFund.notMatured);
+      return;
+    }
+    if (!transactionSigner || (d.primary !== activeAddress && d.backup !== activeAddress)) {
+      showErrorToast(toastMessages.futureFund.notAuthorized);
       return;
     }
 
-    // Simulate transaction processing
     setProcessingId(id);
     try {
-      // TODO: Integrate Algorand SDK here. Example flow:
-      // 1. Connect wallet (MyAlgo/WalletConnect/WalletConnect v2)
-      // 2. Build a transaction that calls the smart contract or transfers funds
-      // 3. Sign & send transaction
-      // 4. Wait for confirmation and update on-chain state
-
-      await new Promise((res) => setTimeout(res, 1000)); // fake delay
+      const result = await appClient.send.claimFutureSelf({
+        args: {
+          fundId: id,
+        },
+        signer: transactionSigner,
+        sender: activeAddress,
+        populateAppCallResources: true,
+        maxFee: algokit.microAlgos(2000),
+        coverAppCallInnerTransactionFees: true,
+      });
+      showSuccessToast(toastMessages.futureFund.claimSuccess);
 
       setDeposits((prev) => prev.map((p) => (p.id === id ? { ...p, claimed: true } : p)));
-      alert("Claim simulated: deposit marked as claimed (UI-only). Replace with on-chain call.");
     } catch (err) {
       console.error(err);
-      alert("Failed to claim — see console for details.");
+      showErrorToast(toastMessages.futureFund.claimFailed);
     } finally {
       setProcessingId(null);
     }
   };
 
   const refreshDeposits = async () => {
+    if (!activeAddress || !transactionSigner) {
+      showErrorToast(toastMessages.futureFund.notConnected);
+      return;
+    }
     setLoading(true);
-    // TODO: Replace with real fetch from contract state / indexer
-    await new Promise((res) => setTimeout(res, 700));
-    setLoading(false);
-    // for demo we just toggle a refresh timestamp (no-op)
+    getFutureFunds(activeAddress)
+      .then((futureFunds) => {
+        setDeposits(futureFunds);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setLoading(false);
+      });
   };
 
-  const handleAddDepositClick = () => {
-    // Placeholder: real UI should open a form/modal and then perform on-chain deposit
-    alert("Add Deposit button clicked — functionality to be implemented (TODO).");
+  const handleAddDeposit = async (data: DepositFormData) => {
+    try {
+      if (!activeAddress || !transactionSigner) {
+        showErrorToast(toastMessages.futureFund.notConnectedToAddDeposit);
+        return;
+      }
+      const paymentTxn = await algorandClient.createTransaction.payment({
+        sender: activeAddress,
+        receiver: APP_ADDRESS,
+        amount: algokit.algos(data.amount),
+        signer: transactionSigner,
+      });
+      await syncTimeOffsetInLocalNet();
+      const result = await appClient.send.fundFutureSelf({
+        args: {
+          primary: data.primary,
+          backup: data.backup,
+          unlockTime: data.unlock_time,
+          payment: paymentTxn,
+        },
+        signer: transactionSigner,
+        sender: activeAddress,
+        populateAppCallResources: true,
+      });
+      showSuccessToast(toastMessages.futureFund.addDepositSuccess);
+      await refreshDeposits();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      showErrorToast(toastMessages.futureFund.addDepositFailed);
+    }
   };
 
   return (
@@ -129,21 +138,19 @@ export default function FutureFundPage() {
             <h1 className="text-2xl font-semibold">FutureFund — Deposits</h1>
             <p className="text-sm text-slate-500">View previous deposits and claim matured funds.</p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={refreshDeposits}
-              className="px-3 py-2 bg-white border rounded-md shadow-sm text-sm"
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
-            <button
-              onClick={handleAddDepositClick}
-              className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium shadow hover:opacity-95"
-            >
-              Add Deposit
-            </button>
-          </div>
+          {activeAddress && (
+            <div className="flex gap-2">
+              <button onClick={refreshDeposits} className="px-3 py-2 bg-white border rounded-md shadow-sm text-sm" disabled={loading}>
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium shadow hover:opacity-95"
+              >
+                Add Deposit
+              </button>
+            </div>
+          )}
         </header>
 
         <main>
@@ -167,14 +174,14 @@ export default function FutureFundPage() {
                     </td>
                   </tr>
                 )}
-                {deposits.map((d)=> {
-                  const matured = isMatured(d.unlock_time);
+                {deposits.map((d) => {
+                  const matured = isMatured(d.unlockTime);
                   return (
                     <tr key={d.id} className="border-b last:border-b-0">
-                      <td className="py-3 px-2 text-sm font-mono">{d.primary}</td>
-                      <td className="py-3 px-2 text-sm font-mono">{d.backup}</td>
-                      <td className="py-3 px-2 text-sm">{formatDate(d.unlock_time)}</td>
-                      <td className="py-3 px-2 text-sm">{microAlgosToAlgos(d.amount)} ALGO</td>
+                      <td className="py-3 px-2 text-sm font-mono">{d.primary.slice(0, 6)}...{d.primary.slice(-4)}</td>
+                      <td className="py-3 px-2 text-sm font-mono">{d.backup.slice(0, 6)}...{d.backup.slice(-4)}</td>
+                      <td className="py-3 px-2 text-sm">{formatDate(d.unlockTime)}</td>
+                      <td className="py-3 px-2 text-sm">{algokit.microAlgos(BigInt(d.amount)).algos} ALGO</td>
                       <td className="py-3 px-2 text-sm">
                         {d.claimed ? (
                           <span className="inline-block px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">Claimed</span>
@@ -196,7 +203,10 @@ export default function FutureFundPage() {
                             {processingId === d.id ? "Processing..." : "Claim"}
                           </button>
                           <button
-                            onClick={() => navigator.clipboard?.writeText(d.primary)}
+                            onClick={() => {
+                              navigator.clipboard?.writeText(d.primary);
+                              showSuccessToast(toastMessages.general.copied);
+                            }}
                             className="px-3 py-1 rounded-md text-sm border bg-white"
                           >
                             Copy Primary
@@ -208,14 +218,10 @@ export default function FutureFundPage() {
                 })}
               </tbody>
             </table>
-
-            <div className="mt-4 text-sm text-slate-500">
-              <strong>Note:</strong> This UI is a frontend prototype. Integrate with Algorand SDK and a wallet to
-              perform real on-chain actions. Unlock/claim behavior should be verified on-chain before executing.
-            </div>
           </div>
         </main>
       </div>
+      <AddDepositModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleAddDeposit} />
     </div>
   );
 }

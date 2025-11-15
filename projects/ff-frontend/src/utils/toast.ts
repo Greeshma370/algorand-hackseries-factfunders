@@ -62,6 +62,17 @@ export const updateToast = (toastId: Id, message: string, type: 'success' | 'err
 
 // Predefined toast messages for common actions
 export const toastMessages = {
+  futureFund: {
+    notConnected: "Please connect your wallet to view future funds.",
+    notConnectedToAddDeposit: "Please connect your wallet to add a deposit.",
+    notAuthorized: "You are not authorized to claim this deposit.",
+    notMatured: "This deposit has not matured yet.",
+    alreadyClaimed: "This deposit is already claimed.",
+    claimSuccess: "Deposit claimed successfully!",
+    claimFailed: "Failed to claim deposit. Please try again.",
+    addDepositSuccess: "Deposit added successfully!",
+    addDepositFailed: "Failed to add deposit. Please try again.",
+  },
   fundraiser: {
     creating: "Creating your fundraiser...",
     created: "🎉 Fundraiser created successfully!",

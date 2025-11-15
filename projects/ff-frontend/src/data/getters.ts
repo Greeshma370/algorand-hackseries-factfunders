@@ -70,6 +70,39 @@ const getVotedAddresses = async (proposalId: bigint) => {
   }
 };
 
+export interface ReadableFutureFund {
+  id: number;
+  primary: string;
+  backup: string;
+  unlockTime: number;
+  amount: number;
+  claimed: boolean;
+}
+
+const getFutureFunds = async (address: string) => {
+  try {
+    await syncTimeOffsetInLocalNet();
+    const futureFunds = await appClient.state.box.futureFunds.getMap();
+    const readableFutureFunds: ReadableFutureFund[] = [];
+    for (const [key, value] of futureFunds.entries()) {
+      if (value.primary !== address && value.backup !== address) {
+        continue;
+      }
+      readableFutureFunds.push({
+        id: Number(key),
+        primary: value.primary,
+        backup: value.backup,
+        unlockTime: Number(value.unlockTime),
+        amount: Number(value.amount),
+        claimed: value.claimed,
+      });
+    }
+    return readableFutureFunds;
+  } catch {
+    return [];
+  }
+};
+
 const categories = [
   "Technology",
   "Healthcare",
@@ -81,4 +114,4 @@ const categories = [
   "Community Projects",
 ];
 
-export { getProposalsLength, getProposal, categories, getDonationAmount, getVotedAddresses };
+export { getProposalsLength, getProposal, categories, getDonationAmount, getVotedAddresses, getFutureFunds };

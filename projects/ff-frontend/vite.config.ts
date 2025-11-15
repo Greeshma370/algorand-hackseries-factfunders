@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -20,20 +20,28 @@ export default defineConfig({
       // Override the default polyfills for specific modules.
       overrides: {
         // Since `fs` is not supported in browsers, we can use the `memfs` package to polyfill it.
-        fs: 'memfs',
+        fs: "memfs",
       },
       // Exclude specific modules from being polyfilled.
       exclude: [
-        'http', // Excludes the polyfill for `http` and `node:http`.
-        'https', // Excludes the polyfill for `https` and `node:https`.
-      ]
-    })
+        "http", // Excludes the polyfill for `http` and `node:http`.
+        "https", // Excludes the polyfill for `https` and `node:https`.
+      ],
+    }),
   ],
   base: "./",
   optimizeDeps: {
-    exclude: ["lucide-react", "@noble/ed25519", "@perawallet/connect", "@txnlab/use-wallet", "@txnlab/use-wallet-react", "@txnlab/use-wallet-ui-react"],
-    include: ["buffer", "process"],
+    exclude: ["lucide-react", "@noble/ed25519", "@perawallet/connect"],
+    include: [
+      "buffer",
+      "process",
+      "use-sync-external-store/shim/with-selector",
+      "@txnlab/use-wallet",
+      "@txnlab/use-wallet-react",
+      "@txnlab/use-wallet-ui-react",
+    ],
   },
+
   define: {
     global: "globalThis",
   },

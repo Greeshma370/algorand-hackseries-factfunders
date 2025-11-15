@@ -1,147 +1,138 @@
-# Fact Funders
-A transparent, decentralized crowdfunding platform built on the Algorand blockchain that enables milestone-based funding releases with community governance.
+Fact Funders – Decentralized Milestone-Based Crowdfunding (Algorand)
 
-## Overview
+Fact Funders is a transparent, decentralized crowdfunding platform built on the Algorand blockchain where funds are released only when milestones are completed and approved by the donor community.
+Creators receive funding in phases — not all at once — ensuring accountability, transparency, and trust.
 
-This smart contract implements a decentralized crowdfunding platform on Algorand that introduces a milestone-based funding release mechanism. Unlike traditional crowdfunding platforms where creators receive all funds at once, this platform releases funds incrementally as project milestones are completed and approved by donors through a weighted voting system.
+📄 Overview
 
-## Key Features
+Fact Funders introduces a milestone-based funding model where:
 
-- **Milestone-Based Funding**: Projects are divided into milestones (up to 5), each with specific funding amounts and deliverables.
-- **Community Governance**: Donors vote to approve or reject milestone completions based on proof submitted by creators.
-- **Weighted Voting**: Voting power is proportional to donation amounts, giving larger donors more influence.
-- **Time-Limited Voting**: Voting periods last 48 hours after proof submission.
-- **Automated Fund Distribution**: Funds are automatically released when milestones are approved.
-- **Protection Against Abandonment**: If a project remains inactive for 3 months, remaining funds can be refunded to donors.
+Creators define up to 5 milestones with clear deliverables
 
-## Smart Contract Functions
+Donors vote on milestone completion using weighted voting (more funds = more voting power)
 
-### `create_proposal`
-Creates a new funding proposal with specified milestones.
+Approved milestones trigger automatic fund release
 
-**Parameters:**
-- `name`: Project identifier
-- `title`: Project title
-- `description`: Detailed project description
-- `amount_required`: Total funding goal (in microAlgos)
-- `milestones`: Array of milestone objects with name and amount fields
+If a project becomes inactive for 3 months, donors can claim proportional refunds
 
-### `donate_proposal`
-Contributes funds to a project.
+This transforms crowdfunding into a trustless and community-governed funding system, eliminating the risk of abandoned projects.
 
-**Parameters:**
-- `proposal_id`: ID of the target proposal
-- `payment`: Payment transaction details
+⚙️ Setup & Installation
+1️⃣ Install Algopy
+pip install algopy
 
-### `submit_proof`
-Submits proof of milestone completion to initiate voting.
+2️⃣ Compile the Smart Contract
+python -m algopy compile proposal_contract.py
 
-**Parameters:**
-- `proposal_id`: ID of the target proposal
-- `proof_link`: Link to evidence demonstrating milestone completion
+3️⃣ Deploy to Algorand TestNet
+python -m algopy deploy proposal_contract.py --network testnet
 
-### `vote_milestone`
-Allows donors to vote on milestone completion.
+4️⃣ Interact Using AlgoSDK
 
-**Parameters:**
-- `proposal_id`: ID of the target proposal
-- `vote`: Boolean (true for approval, false for rejection)
+Example: creating a proposal
 
-### `claim_milestone`
-Releases milestone funds if voting approves completion.
+from algosdk import v2client, transaction
+from algopy import ARC4Contract
 
-**Parameters:**
-- `proposal_id`: ID of the target proposal
+algod = v2client.algod.AlgodClient("YOUR_API_KEY", "TESTNET_URL")
 
-### `refund_if_inactive`
-Refunds proportional donation amounts if project is inactive for 3 months.
+milestones = [
+    {"name": "MVP Development", "amount": 5000000},
+    {"name": "Beta Release", "amount": 3000000},
+    {"name": "Final Product", "amount": 2000000},
+]
 
-**Parameters:**
-- `proposal_id`: ID of the target proposal
+proposal_contract.create_proposal(
+    "project-alpha",
+    "Revolutionary DeFi Product",
+    "A decentralized platform that revolutionizes finance...",
+    10000000,
+    milestones
+)
 
-## Usage Example
+🔗 Deployed Smart Contract (TestNet)
 
-1. **Create a Project:**
-   ```python
-   from algosdk import v2client, transaction
-   from algopy import ARC4Contract
-   
-   # Initialize client
-   algod_client = v2client.algod.AlgodClient("YOUR_API_KEY", "YOUR_ALGOD_NODE")
-   
-   # Create proposal with milestones
-   milestones = [
-       {"name": "MVP Development", "amount": 5000000},  # 5 Algos
-       {"name": "Beta Release", "amount": 3000000},     # 3 Algos
-       {"name": "Final Product", "amount": 2000000}     # 2 Algos
-   ]
-   
-   proposal_contract.create_proposal(
-       "project-alpha",
-       "Revolutionary DeFi Product",
-       "A decentralized platform that revolutionizes finance...",
-       10000000,  # 10 Algos total
-       milestones
-   )
-   ```
+Your live smart contract is deployed on the Algorand TestNet:
 
-2. **Donate to Projects:**
-   ```python
-   # Donate 1 Algo to proposal ID 0
-   payment_txn = transaction.PaymentTxn(
-       sender=user_address,
-       receiver=contract_address,
-       amt=1000000,  # 1 Algo
-       sp=algod_client.suggested_params()
-   )
-   
-   proposal_contract.donate_proposal(0, payment_txn)
-   ```
+👉 https://lora.algokit.io/testnet/application/740840374
 
-3. **Submit Milestone Proof:**
-   ```python
-   # After reaching funding goal and completing the first milestone
-   proposal_contract.submit_proof(
-       0, 
-       "https://github.com/myproject/milestone1-evidence"
-   )
-   ```
+Use this link to explore global/local state and test interaction.
 
-4. **Vote on Milestone:**
-   ```python
-   # As a donor, vote to approve the milestone
-   proposal_contract.vote_milestone(0, True)  # True to approve
-   ```
+🌐 Frontend (Live Deployment)
 
-5. **Claim Milestone Funding:**
-   ```python
-   # After voting period ends with positive result
-   proposal_contract.claim_milestone(0)
-   ```
+Your frontend is deployed and accessible at:
 
-## Deployment Instructions
+👉 https://greeshma370.github.io/algorand-hackseries-factfunders/
 
-1. Compile the contract using AlgoPy:
-   ```
-   python -m algopy compile proposal_contract.py
-   ```
+This interface allows users to:
 
-2. Deploy to Algorand testnet or mainnet:
-   ```
-   python -m algopy deploy proposal_contract.py --network testnet
-   ```
+View available projects
 
-## Security Considerations
+Donate to proposals
 
-- All milestone funds are held in escrow by the smart contract until milestone approval
-- Voting weights prevent "Sybil attacks" by requiring donations to have influence
-- Time-limited milestone submissions prevent indefinite fund locking
-- The refund mechanism protects donors if projects are abandoned
+Track milestone progress
 
-## License
+Vote on milestone completion
+
+Claim milestone payouts or refunds
+
+🧠 Architecture & Components
+
+Fact Funders consists of three main layers:
+
+1️⃣ Smart Contract Layer (Algorand / Algopy)
+
+Handles:
+
+Proposal creation & milestone storage
+
+Donation tracking
+
+Donor-weighted voting
+
+Escrowed milestone payouts
+
+Inactivity detection & refunds
+
+2️⃣ Off-Chain Logic (SDK Interactions)
+
+Includes:
+
+AlgoSDK calls for donations, votes, and proof submission
+
+Transaction grouping & wallet signing
+
+Proof link verification
+
+3️⃣ Frontend (React + Wallet Connect)
+
+Provides:
+
+UI for exploring proposals
+
+Wallet connectivity (Pera, Defly, etc.)
+
+Voting dashboard
+
+Milestone status and payout claim options
+
+🛡️ Security Features
+
+Escrowed milestone funds until approval
+
+Weighted voting prevents spam/Sybil attacks
+
+48-hour voting windows
+
+Automatic refunds after 90 days of inactivity
+
+Immutable on-chain milestone records
+
+📜 License
 
 MIT License
 
-## Contributing
+🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome!
+Please open an issue or submit a pull request.

@@ -13,6 +13,7 @@
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.1.0",
     "@blockshake/defly-connect": "^1.2.1",
+    "@google/generative-ai": "^0.24.1",
     "@perawallet/connect": "^1.4.2",
     "@tailwindcss/vite": "^4.1.8",
     "@txnlab/use-wallet": "^4.1.0",

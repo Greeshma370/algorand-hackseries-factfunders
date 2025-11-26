@@ -1,9 +1,51 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Link as LinkIcon, Mic, FileText } from 'lucide-react';
+import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 
-// --- MOCK CROWDFUNDING PLATFORM DATA ---
-// In a real application, this data would be fetched from Firestore/your backend.
-const MOCK_PLATFORM_DATA = {
+// --- Types & Interfaces ---
+interface Proposal {
+  id: string;
+  title: string;
+  goal: number;
+  raised: number;
+  status: string;
+}
+
+interface ProofSubmission {
+  proposalId: string;
+  date: string;
+  type: string;
+  details: string;
+  cost?: number;
+  proofUrl: string;
+}
+
+interface PlatformData {
+  proposals: Proposal[];
+  proofSubmissions: ProofSubmission[];
+}
+
+interface UploadedFileState {
+  base64Data: string | null;
+  mimeType: string | null;
+  fileName: string;
+  error?: boolean;
+}
+
+interface Source {
+  uri: string;
+  title: string;
+}
+
+interface ChatMessage {
+  role: 'user' | 'bot';
+  text: string;
+  sources: Source[];
+  file?: string | null;
+}
+
+// --- MOCK DATA ---
+const MOCK_PLATFORM_DATA: PlatformData = {
   proposals: [
     { id: 'P001', title: 'Community Garden Revitalization', goal: 5000, raised: 3200, status: 'In Progress' },
     { id: 'P002', title: 'Tech Skills Workshop Series', goal: 2500, raised: 2500, status: 'Completed' },
@@ -17,132 +59,92 @@ const MOCK_PLATFORM_DATA = {
   ],
 };
 
-// --- API Configuration ---
-const apiKey = "";
-const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+// --- API Logic ---
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY || "");
 
-// Function to call the Gemini API with exponential backoff
-const generateContent = async (userQuery, platformData, uploadedFile) => {
-  const systemPrompt = `You are an expert financial and project analyst providing real-time, data-backed insights. Your primary function is to analyze crowdfunding project data, proof submissions, and any submitted media (if provided) to inform donor decisions.
-- If the user's query is a simple greeting (e.g., 'Hi', 'Hello', 'What's up'), respond only with a brief, friendly greeting (e.g., 'Hello!', 'Hi there!'). Do not provide a long introduction or data summary.
-- Otherwise, analyze the user's query, the provided 'platformData' context, and the attached file (if present).
-- If an image/file is included, analyze its relevance to the project data.
-- Provide a clear, actionable analysis of the project's progress relative to its goals.
-- Offer specific, constructive suggestions or answers to the user based on the analysis.
-- Use the Google Search tool for any external, real-time context if necessary.
-- Keep the response professional, concise, and focused on the user's query.
+const generateContent = async (
+  userQuery: string,
+  platformData: PlatformData,
+  uploadedFile: UploadedFileState | null
+): Promise<{ text: string; sources: Source[] }> => {
+  try {
+    const model: GenerativeModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: `You are an expert financial and project analyst providing real-time, data-backed insights.
+      - Analyze the user's query and the provided 'platformData' context.
+      - If an image/file is included, analyze its relevance to the project data.
+      - Keep the response professional, concise, and helpful.
 
---- CONTEXT (Platform Data) ---
-Proposals: ${JSON.stringify(platformData.proposals, null, 2)}
-Submissions: ${JSON.stringify(platformData.proofSubmissions, null, 2)}
-`;
-
-  // Construct the contents array for multimodal input
-  const contentsParts = [{ text: userQuery }];
-  if (uploadedFile) {
-    contentsParts.push({
-      inlineData: {
-        mimeType: uploadedFile.mimeType,
-        data: uploadedFile.base64Data,
-      },
+      --- CONTEXT ---
+      Proposals: ${JSON.stringify(platformData.proposals, null, 2)}
+      Submissions: ${JSON.stringify(platformData.proofSubmissions, null, 2)}`
     });
-  }
 
-  const payload = {
-    contents: [{ parts: contentsParts }],
-    tools: [{ "google_search": {} }],
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-  };
+    const promptParts: (string | { inlineData: { data: string; mimeType: string } })[] = [userQuery];
 
-  let response;
-  let delay = 1000;
-  const maxRetries = 3;
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    if (uploadedFile && uploadedFile.base64Data && uploadedFile.mimeType) {
+      promptParts.push({
+        inlineData: {
+          data: uploadedFile.base64Data,
+          mimeType: uploadedFile.mimeType,
+        },
       });
-
-      if (response.ok) {
-        break; // Success
-      } else if (response.status === 429) {
-        console.warn(`Rate limit hit. Retrying in ${delay / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
-      } else {
-        const errorBody = await response.json();
-        throw new Error(`API Error: ${response.status} - ${errorBody.error.message}`);
-      }
-    } catch (error) {
-      if (i === maxRetries - 1) {
-        console.error("Failed to fetch content after retries:", error);
-        throw new Error("Could not connect to the analysis engine. Please try again later.");
-      }
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2; // Exponential backoff
     }
+
+    const result = await model.generateContent(promptParts);
+    const response = await result.response;
+    const text = response.text();
+
+    // Safe extraction of sources
+    let sources: Source[] = [];
+    if (response.candidates && response.candidates[0].groundingMetadata?.groundingAttributions) {
+       sources = response.candidates[0].groundingMetadata.groundingAttributions
+        .map(attr => ({
+            uri: attr.web?.uri || "",
+            title: attr.web?.title || "Source"
+        }))
+        .filter(s => s.uri !== "");
+    }
+
+    return { text, sources };
+
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw new Error("Failed to connect to Gemini. Please check your API key and internet connection.");
   }
-
-  const result = await response.json();
-  const candidate = result.candidates?.[0];
-
-  if (!candidate || !candidate.content?.parts?.[0]?.text) {
-    throw new Error("Received an empty or malformed response from the model.");
-  }
-
-  const text = candidate.content.parts[0].text;
-  let sources = [];
-
-  const groundingMetadata = candidate.groundingMetadata;
-  if (groundingMetadata && groundingMetadata.groundingAttributions) {
-    sources = groundingMetadata.groundingAttributions
-      .map(attribution => ({
-        uri: attribution.web?.uri,
-        title: attribution.web?.title,
-      }))
-      .filter(source => source.uri && source.title);
-  }
-
-  return { text, sources };
 };
 
-// --- React Component ---
-const App = () => {
-  const [chatHistory, setChatHistory] = useState([
+// --- Component ---
+const App: React.FC = () => {
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
       role: 'bot',
-      text: "Hi there! I'm ready to analyze your project data and proof submissions. Ask me about a specific proposal, like 'Is P001 on budget?'",
+      text: "Hi there! I'm ready to analyze your project data. Ask me about a proposal!",
       sources: []
     }
   ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null); // { base64Data, mimeType, fileName }
+  const [input, setInput] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
 
-  const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null); // Type as any for browser compatibility
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Browser Speech Check
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   const isSpeechSupported = !!SpeechRecognition;
 
-  const scrollToBottom = () => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, [chatHistory]);
 
-  React.useEffect(scrollToBottom, [chatHistory]);
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Use a simple limit (5MB) for image/document uploads
     if (file.size > 5 * 1024 * 1024) {
-      // Using console.error instead of alert due to iframe constraints
       console.error("File is too large (max 5MB).");
       setUploadedFile({ fileName: "File too large (Max 5MB)", base64Data: null, mimeType: null, error: true });
       return;
@@ -150,24 +152,21 @@ const App = () => {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      // Extract base64 part
-      const base64String = reader.result.split(',')[1];
-      setUploadedFile({
-        base64Data: base64String,
-        mimeType: file.type,
-        fileName: file.name,
-      });
+      if (typeof reader.result === 'string') {
+        const base64String = reader.result.split(',')[1];
+        setUploadedFile({
+          base64Data: base64String,
+          mimeType: file.type,
+          fileName: file.name,
+        });
+      }
     };
     reader.readAsDataURL(file);
-    // Clear the file input value so the same file can be uploaded again
-    event.target.value = null;
+    event.target.value = ''; // Reset input
   };
 
   const handleVoiceInput = useCallback(() => {
-    if (!isSpeechSupported) {
-      console.error("Speech recognition is not supported in this browser.");
-      return;
-    }
+    if (!isSpeechSupported) return;
 
     if (isRecording) {
       recognitionRef.current?.stop();
@@ -179,11 +178,11 @@ const App = () => {
       recognitionRef.current = recognition;
 
       recognition.onstart = () => { setIsRecording(true); };
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
       };
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
       };
@@ -192,40 +191,41 @@ const App = () => {
     }
   }, [isRecording, isSpeechSupported]);
 
-
-  const handleSendMessage = useCallback(async (e) => {
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading || isRecording) return;
 
     const userQuery = input.trim();
+    const currentFile = uploadedFile; // Capture current file state
 
-    // 1. Add user message to history
-    setChatHistory(prev => [...prev, { role: 'user', text: userQuery, sources: [], file: uploadedFile ? uploadedFile.fileName : null }]);
+    // 1. Add user message
+    setChatHistory(prev => [...prev, {
+      role: 'user',
+      text: userQuery,
+      sources: [],
+      file: currentFile?.fileName || null
+    }]);
+
     setInput('');
     setLoading(true);
+    setUploadedFile(null); // Clear file immediately after sending
 
     try {
-      // 2. Call the AI analysis function, passing the file
-      const { text, sources } = await generateContent(userQuery, MOCK_PLATFORM_DATA, uploadedFile);
-
-      // 3. Add bot response to history
+      const { text, sources } = await generateContent(userQuery, MOCK_PLATFORM_DATA, currentFile);
       setChatHistory(prev => [...prev, { role: 'bot', text, sources }]);
-
-    } catch (error) {
-      console.error("Chatbot failed:", error.message);
+    } catch (error: any) {
       setChatHistory(prev => [...prev, {
         role: 'bot',
-        text: `Error: ${error.message} (Check console for details on API configuration or errors.)`,
+        text: `Error: ${error.message || "Something went wrong."}`,
         sources: []
       }]);
     } finally {
       setLoading(false);
-      setUploadedFile(null); // Clear the uploaded file after sending
     }
   }, [input, loading, isRecording, uploadedFile]);
 
-  // UI Components
-  const MessageBubble = ({ message }) => {
+  // --- Render Helper ---
+  const MessageBubble = ({ message }: { message: ChatMessage }) => {
     const isUser = message.role === 'user';
     const bgColor = isUser ? 'bg-indigo-600/10 text-indigo-800' : 'bg-white shadow-md text-gray-800';
     const align = isUser ? 'self-end' : 'self-start';
@@ -233,25 +233,25 @@ const App = () => {
 
     return (
       <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} my-2`}>
-        <div className={`flex items-start max-w-3/4 p-4 rounded-xl ${bgColor} ${align} border border-gray-100`}>
+        <div className={`flex items-start max-w-[85%] p-4 rounded-xl ${bgColor} ${align} border border-gray-100`}>
           <div className="mr-3 mt-1 flex-shrink-0">{icon}</div>
-          <div className="flex flex-col">
+          <div className="flex flex-col overflow-hidden">
             <p className={`whitespace-pre-wrap text-sm ${isUser ? 'text-indigo-800' : 'text-gray-800'}`}>
               {message.text}
             </p>
             {message.file && isUser && (
-              <div className="mt-2 text-xs text-gray-500 flex items-center pt-2 border-t border-dashed">
+              <div className="mt-2 text-xs text-gray-500 flex items-center pt-2 border-t border-dashed border-gray-300">
                 <FileText className="w-3 h-3 mr-1 text-indigo-500" />
-                <span className="font-semibold">Attached File:</span> {message.file}
+                <span className="font-semibold">Attached:</span>&nbsp;{message.file}
               </div>
             )}
             {message.sources && message.sources.length > 0 && (
-              <div className="mt-2 text-xs text-gray-500 border-t pt-2">
-                <p className="font-semibold mb-1">Sources/Grounding:</p>
+              <div className="mt-2 text-xs text-gray-500 border-t border-gray-200 pt-2">
+                <p className="font-semibold mb-1">Sources:</p>
                 {message.sources.slice(0, 3).map((source, index) => (
-                  <a key={index} href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-center hover:underline text-blue-600 mt-0.5">
+                  <a key={index} href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-center hover:underline text-blue-600 mt-0.5 truncate">
                     <LinkIcon className="w-3 h-3 mr-1 flex-shrink-0" />
-                    {source.title.substring(0, 50)}...
+                    {source.title}
                   </a>
                 ))}
               </div>
@@ -264,34 +264,24 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-8 font-sans flex justify-center">
-      <script src="https://cdn.tailwindcss.com"></script>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        .font-sans { font-family: 'Inter', sans-serif; }
-        .chat-messages::-webkit-scrollbar { width: 6px; }
-        .chat-messages::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
-        .chat-messages::-webkit-scrollbar-track { background-color: #f1f5f9; }
-      `}</style>
-
-      <div className="w-full max-w-3xl bg-gray-100 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-3xl bg-gray-100 rounded-2xl shadow-2xl flex flex-col overflow-hidden h-[80vh]">
         {/* Header */}
         <div className="p-4 bg-white border-b border-gray-200 flex items-center">
           <h1 className="text-xl font-bold text-indigo-700 flex items-center">
-            <Bot className="w-6 h-6 mr-2" /> Fact Funders Smart Assistant
+            <Bot className="w-6 h-6 mr-2" /> Fact Funders Assistant
           </h1>
         </div>
 
-        {/* Message Area */}
-        <div className="flex-1 overflow-y-auto p-4 chat-messages space-y-4">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {chatHistory.map((msg, index) => (
             <MessageBubble key={index} message={msg} />
           ))}
-          {/* Loading indicator */}
           {loading && (
             <div className="flex justify-start my-2">
               <div className="bg-white p-3 rounded-xl shadow-md text-gray-600 flex items-center">
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analyzing data...
+                Analyzing...
               </div>
             </div>
           )}
@@ -300,12 +290,11 @@ const App = () => {
 
         {/* Input Area */}
         <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-200">
-          {/* File Preview/Indicator */}
           {uploadedFile && uploadedFile.fileName && (
             <div className={`mb-3 text-sm flex items-center p-2 rounded-lg border ${uploadedFile.error ? 'bg-red-50 border-red-200 text-red-600' : 'bg-indigo-50 border-indigo-200 text-gray-600'}`}>
               <FileText className="w-4 h-4 mr-2" />
               <span className="font-medium">{uploadedFile.error ? 'Error:' : 'Attached:'}</span>
-              <span className="ml-1">{uploadedFile.fileName}</span>
+              <span className="ml-1 truncate max-w-[200px]">{uploadedFile.fileName}</span>
               <button type="button" onClick={() => setUploadedFile(null)} className="ml-auto text-gray-500 hover:text-gray-700">
                 &times;
               </button>
@@ -313,28 +302,23 @@ const App = () => {
           )}
 
           <div className="flex items-center space-x-3">
-
-            {/* Hidden File Input */}
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              accept="image/*,application/pdf,text/*"
+              accept="image/*,application/pdf"
               className="hidden"
               disabled={loading}
             />
-            {/* File Upload Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
               className="p-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150 shadow-md flex items-center justify-center disabled:opacity-50"
-              aria-label="Upload file for analysis"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+              <FileText className="w-5 h-5" />
             </button>
 
-            {/* Voice Input Button */}
             {isSpeechSupported && (
               <button
                 type="button"
@@ -344,14 +328,12 @@ const App = () => {
                   isRecording
                     ? 'bg-red-500 text-white hover:bg-red-600'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+                } disabled:opacity-50`}
               >
                 <Mic className="w-5 h-5" />
               </button>
             )}
 
-            {/* Text Input - Disabled while recording */}
             <input
               type="text"
               value={input}
@@ -361,17 +343,12 @@ const App = () => {
               disabled={loading || isRecording}
             />
 
-            {/* Send Button */}
             <button
               type="submit"
               disabled={!input.trim() || loading || isRecording}
-              className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 disabled:bg-indigo-400 disabled:cursor-not-allowed shadow-md flex items-center justify-center"
+              className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 disabled:bg-indigo-400 shadow-md flex items-center justify-center"
             >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>
           </div>
         </form>

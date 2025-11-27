@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
-import ChatWidget from '../../pages/ChatWidget';
+import ChatWidget from './ChatWidget';
 
 interface LayoutProps {
   children: React.ReactNode;

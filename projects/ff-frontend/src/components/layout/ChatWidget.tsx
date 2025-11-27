@@ -20,21 +20,21 @@ const MOCK_PLATFORM_DATA = {
   ],
 };
 
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-
-// Validate API key exists
-if (!apiKey) {
-  console.warn("Missing VITE_GOOGLE_API_KEY environment variable");
-}
-
-const genAI = new GoogleGenerativeAI(apiKey || "");
-
+// --- API Logic ---
+// We initialize this inside the call to handle missing keys gracefully
 const generateContent = async (userQuery: string, uploadedFile: UploadedFileState | null) => {
-  try {
-    if (!apiKey) throw new Error("API key not configured");
+  const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 
+  if (!apiKey) {
+    throw new Error("API Key is missing. Check your .env file.");
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+
+  try {
+    // Use the stable model name 'gemini-1.5-flash'
     const model: GenerativeModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-pro",
       systemInstruction: `You are an expert financial and project analyst for Fact Funders.
       Analyze the user's query and the provided platform data. Keep responses concise (under 3 sentences where possible) for a chat widget format.`
     });
@@ -54,7 +54,10 @@ const generateContent = async (userQuery: string, uploadedFile: UploadedFileStat
     return { text: response.text(), sources: [] };
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error(error?.message || "Failed to connect to Gemini.");
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      throw new Error("Model not found. Please check your API availability.");
+    }
+    throw new Error("Failed to connect to Fact Funders AI.");
   }
 };
 
@@ -81,7 +84,7 @@ const ChatWidget: React.FC = () => {
     const userQuery = input.trim();
     const currentFile = uploadedFile;
 
-    setChatHistory(prev => [...prev, { role: 'user', text: userQuery, sources: [], file: currentFile?.fileName || null }]);
+    setChatHistory(prev => [...prev, { role: 'user', text: userQuery, sources: [], file: currentFile?.fileName }]);
     setInput('');
     setLoading(true);
     setUploadedFile(null);
@@ -90,7 +93,7 @@ const ChatWidget: React.FC = () => {
       const { text, sources } = await generateContent(userQuery, currentFile);
       setChatHistory(prev => [...prev, { role: 'bot', text, sources }]);
     } catch (error: any) {
-      setChatHistory(prev => [...prev, { role: 'bot', text: `Error: ${error?.message || "Unknown error occurred"}`, sources: [] }]);
+      setChatHistory(prev => [...prev, { role: 'bot', text: `Error: ${error.message}`, sources: [] }]);
     } finally {
       setLoading(false);
     }
@@ -98,22 +101,25 @@ const ChatWidget: React.FC = () => {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          // Robust base64 extraction
+          const result = reader.result;
+          const base64Data = result.includes(',') ? result.split(',')[1] : result;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        const commaIndex = reader.result.indexOf(',');
-        const base64String = commaIndex >= 0 ? reader.result.slice(commaIndex + 1) : reader.result;
-        setUploadedFile({
-          base64Data: base64String,
-          mimeType: file.type,
-          fileName: file.name
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-    if (e.target) e.target.value = '';
+          setUploadedFile({
+             base64Data,
+             mimeType: file.type,
+             fileName: file.name
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
   };
 
   return (
@@ -150,10 +156,10 @@ const ChatWidget: React.FC = () => {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-white p-3 rounded-xl shadow border border-gray-100 flex items-center">
-                  <Loader2 className="w-4 h-4 text-indigo-600 animate-spin mr-2" />
-                  <span className="text-xs text-gray-500">Thinking...</span>
-                </div>
+                 <div className="bg-white p-3 rounded-xl shadow border border-gray-100 flex items-center">
+                    <Loader2 className="w-4 h-4 text-indigo-600 animate-spin mr-2" />
+                    <span className="text-xs text-gray-500">Thinking...</span>
+                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />

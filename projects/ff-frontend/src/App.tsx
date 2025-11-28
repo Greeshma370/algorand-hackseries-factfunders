@@ -7,6 +7,7 @@ import ContactPage from './pages/ContactPage';
 import CreateFundraiserPage from './pages/CreateFundraiserPage';
 import FundraiserPage from './pages/FundraiserPage';
 import FundFuture from './pages/FundFuture';
+import LeaderboardPage from './pages/LeaderBoardPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/create" element={<CreateFundraiserPage />} />
           <Route path="/fundraiser/:id" element={<FundraiserPage />} />
           <Route path="/fund-future" element={<FundFuture />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
         </Routes>
       </Layout>
       <ToastContainer

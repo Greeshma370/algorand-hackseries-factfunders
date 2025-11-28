@@ -64,7 +64,7 @@ const Navbar: React.FC = () => {
                   isActive("/donate") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
                 }`}
               >
-                Donate
+                Proposals
               </Link>
               <Link
                 to="/create"
@@ -77,18 +77,18 @@ const Navbar: React.FC = () => {
               <Link
                 to="/fund-future"
                 className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
-                  isActive("/create") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
+                  isActive("/fund-future") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
                 }`}
               >
                 Future Funds
               </Link>
               <Link
-                to="/contact"
+                to="/leaderboard"
                 className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
-                  isActive("/contact") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
+                  isActive("/leaderboard") ? "text-blue-600 border-b-2 border-blue-600 pb-1" : scrolled ? "text-gray-700" : "text-gray-700"
                 }`}
               >
-                Contact
+                Leaderboard
               </Link>
             </div>
             <WalletButton />
@@ -120,7 +120,7 @@ const Navbar: React.FC = () => {
                   isActive("/donate") ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Donate
+                Proposals
               </Link>
               <Link
                 to="/create"
@@ -131,12 +131,12 @@ const Navbar: React.FC = () => {
                 Create Fundraiser
               </Link>
               <Link
-                to="/contact"
+                to="/leaderboard"
                 className={`text-sm font-medium px-3 py-2 rounded-md ${
-                  isActive("/contact") ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+                  isActive("/leaderboard") ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Contact
+                Leaderboard
               </Link>
               <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors duration-200">
                 <Wallet size={18} />

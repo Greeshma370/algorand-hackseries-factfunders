@@ -11,12 +11,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-grow">
+
+      {/* Add padding so content doesn't hide behind fixed navbar */}
+      <main className="flex-grow pt-20">
         {children}
       </main>
-      <Footer />
 
-      {/* Add the widget here so it floats above everything */}
+      <Footer />
       <ChatWidget />
     </div>
   );

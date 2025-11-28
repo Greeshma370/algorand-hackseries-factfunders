@@ -21,7 +21,6 @@ const MOCK_PLATFORM_DATA = {
 };
 
 // --- API Logic ---
-// We initialize this inside the call to handle missing keys gracefully
 const generateContent = async (userQuery: string, uploadedFile: UploadedFileState | null) => {
   const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 
@@ -32,9 +31,9 @@ const generateContent = async (userQuery: string, uploadedFile: UploadedFileStat
   const genAI = new GoogleGenerativeAI(apiKey);
 
   try {
-    // Use the stable model name 'gemini-1.5-flash'
+    // ✅ UPDATED MODEL — you have this model in your list
     const model: GenerativeModel = genAI.getGenerativeModel({
-      model: "gemini-pro",
+      model: "gemini-2.5-flash",
       systemInstruction: `You are an expert financial and project analyst for Fact Funders.
       Analyze the user's query and the provided platform data. Keep responses concise (under 3 sentences where possible) for a chat widget format.`
     });
@@ -52,11 +51,14 @@ const generateContent = async (userQuery: string, uploadedFile: UploadedFileStat
     const result = await model.generateContent(promptParts);
     const response = await result.response;
     return { text: response.text(), sources: [] };
+
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+
     if (error.message?.includes("404") || error.message?.includes("not found")) {
       throw new Error("Model not found. Please check your API availability.");
     }
+
     throw new Error("Failed to connect to Fact Funders AI.");
   }
 };
@@ -105,28 +107,26 @@ const ChatWidget: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          // Robust base64 extraction
           const result = reader.result;
           const base64Data = result.includes(',') ? result.split(',')[1] : result;
 
           setUploadedFile({
-             base64Data,
-             mimeType: file.type,
-             fileName: file.name
+            base64Data,
+            mimeType: file.type,
+            fileName: file.name
           });
         }
       };
       reader.readAsDataURL(file);
     }
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-      {/* Chat Window */}
       {isOpen && (
         <div className="mb-4 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 transition-all duration-300 ease-in-out transform origin-bottom-right">
+
           {/* Header */}
           <div className="bg-indigo-700 p-4 text-white flex justify-between items-center shadow-sm">
             <div className="flex items-center">
@@ -154,14 +154,16 @@ const ChatWidget: React.FC = () => {
                 </div>
               </div>
             ))}
+
             {loading && (
               <div className="flex justify-start">
-                 <div className="bg-white p-3 rounded-xl shadow border border-gray-100 flex items-center">
-                    <Loader2 className="w-4 h-4 text-indigo-600 animate-spin mr-2" />
-                    <span className="text-xs text-gray-500">Thinking...</span>
-                 </div>
+                <div className="bg-white p-3 rounded-xl shadow border border-gray-100 flex items-center">
+                  <Loader2 className="w-4 h-4 text-indigo-600 animate-spin mr-2" />
+                  <span className="text-xs text-gray-500">Thinking...</span>
+                </div>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -201,3 +203,5 @@ const ChatWidget: React.FC = () => {
 };
 
 export default ChatWidget;
+
+

@@ -103,6 +103,24 @@ const getFutureFunds = async (address: string) => {
   }
 };
 
+const getAllDonations = async () => {
+  try {
+    await syncTimeOffsetInLocalNet();
+    const donations = await appClient.state.box.donations.getMap();
+    const readableDonations = [];
+    for (const [key, value] of donations.entries()) {
+      readableDonations.push({
+        proposalId: key.proposalId,
+        donor: key.donor,
+        amount: algokit.microAlgos(value).algos,
+      });
+    }
+    return readableDonations;
+  } catch {
+    return [];
+  }
+};
+
 const categories = [
   "Technology",
   "Healthcare",
@@ -114,4 +132,4 @@ const categories = [
   "Community Projects",
 ];
 
-export { getProposalsLength, getProposal, categories, getDonationAmount, getVotedAddresses, getFutureFunds };
+export { getProposalsLength, getProposal, categories, getDonationAmount, getVotedAddresses, getFutureFunds, getAllDonations };

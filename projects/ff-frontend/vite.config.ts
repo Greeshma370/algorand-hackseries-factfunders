@@ -31,7 +31,6 @@ export default defineConfig({
   ],
   base: "./",
   optimizeDeps: {
-    exclude: ["lucide-react", "@noble/ed25519", "@perawallet/connect"],
     include: [
       "buffer",
       "process",
@@ -39,7 +38,10 @@ export default defineConfig({
       "@txnlab/use-wallet",
       "@txnlab/use-wallet-react",
       "@txnlab/use-wallet-ui-react",
+      "@perawallet/connect", // ✅ MUST be included
+      "is-typedarray", // ✅ FORCE optimize
     ],
+    exclude: ["lucide-react"],
   },
 
   define: {

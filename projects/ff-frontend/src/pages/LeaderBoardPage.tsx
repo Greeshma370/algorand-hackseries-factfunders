@@ -2,17 +2,15 @@ import React, { useEffect, useState } from 'react';
 import {
   getProposalsLength,
   getProposal,
-  getVotedAddresses,
-  getDonationAmount
+  getAllDonations
 } from '../data/getters';
 import { Loader2, Trophy, Medal, User, Heart, CheckCircle2 } from 'lucide-react';
 
-// Interfaces for our data
 interface CreatorLeader {
   address: string;
   totalRaised: number;
   campaignCount: number;
-  successfulCampaigns: number; // <--- New Field
+  successfulCampaigns: number;
 }
 
 interface DonorLeader {
@@ -23,8 +21,18 @@ interface DonorLeader {
 
 type Tab = 'creator' | 'donor';
 
+// Helpers
+const toNumber = (v: bigint | number | string | null | undefined): number => {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'bigint') return Number(v);
+  return Number(v);
+};
+
+// If your values are microAlgos, keep this.
+// If they're already ALGO, change to: const toAlgo = (v: any) => toNumber(v);
+const toAlgo = (v: any): number => toNumber(v) / 1_000_000;
+
 const LeaderboardPage: React.FC = () => {
-  // State
   const [activeTab, setActiveTab] = useState<Tab>('creator');
   const [creators, setCreators] = useState<CreatorLeader[]>([]);
   const [donors, setDonors] = useState<DonorLeader[]>([]);
@@ -34,65 +42,72 @@ const LeaderboardPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const length = await getProposalsLength();
-        const creatorMap: Record<string, CreatorLeader> = {};
-        const donorMap: Record<string, DonorLeader> = {};
+        const lengthRaw = await getProposalsLength();
+        const length = toNumber(lengthRaw);
 
-        // Loop through all proposals
-        for (let i = 0; i < Number(length); i++) {
+
+        const creatorMap: Record<string, CreatorLeader> = {};
+        // Aggregate creators as before
+        for (let i = 0; i < length; i++) {
           const proposalId = BigInt(i);
           const proposal = await getProposal(proposalId);
-
-          if (proposal) {
-            // 1. Process Creator Data
-            const creatorAddr = proposal.createdBy;
-            if (!creatorMap[creatorAddr]) {
-              creatorMap[creatorAddr] = {
-                address: creatorAddr,
-                totalRaised: 0,
-                campaignCount: 0,
-                successfulCampaigns: 0 // <--- Initialize
-              };
-            }
-            creatorMap[creatorAddr].totalRaised += proposal.amountRaised;
-            creatorMap[creatorAddr].campaignCount += 1;
-
-            // Check if campaign was successful (Raised >= Required)
-            if (proposal.amountRaised >= proposal.amountRequired) {
-              creatorMap[creatorAddr].successfulCampaigns += 1;
-            }
-
-            // 2. Process Donor Data
-            const voters = await getVotedAddresses(proposalId);
-            const uniqueVoters = Array.from(new Set(voters));
-
-            for (const donorAddr of uniqueVoters) {
-              const donationAmount = await getDonationAmount(proposalId, donorAddr);
-
-              if (donationAmount && donationAmount > 0) {
-                if (!donorMap[donorAddr]) {
-                  donorMap[donorAddr] = {
-                    address: donorAddr,
-                    totalDonated: 0,
-                    campaignsSupported: 0
-                  };
-                }
-                donorMap[donorAddr].totalDonated += Number(donationAmount);
-                donorMap[donorAddr].campaignsSupported += 1;
-              }
-            }
+          if (!proposal) continue;
+          const creatorAddr = proposal.createdBy;
+          if (!creatorMap[creatorAddr]) {
+            creatorMap[creatorAddr] = {
+              address: creatorAddr,
+              totalRaised: 0,
+              campaignCount: 0,
+              successfulCampaigns: 0,
+            };
+          }
+          const amountRaised = Number(proposal.amountRaised ?? 0);
+          const amountRequired = Number(proposal.amountRequired ?? 0);
+          creatorMap[creatorAddr].totalRaised += amountRaised;
+          creatorMap[creatorAddr].campaignCount += 1;
+          if (amountRaised >= amountRequired) {
+            creatorMap[creatorAddr].successfulCampaigns += 1;
           }
         }
 
-        // Convert maps to arrays and sort
-        const sortedCreators = Object.values(creatorMap).sort((a, b) => b.totalRaised - a.totalRaised);
-        const sortedDonors = Object.values(donorMap).sort((a, b) => b.totalDonated - a.totalDonated);
+        // Donor aggregation using getAllDonations
+        const donorMap: Record<string, DonorLeader> = {};
+        const allDonations = await getAllDonations();
+        // Map: donor address -> set of proposalIds supported
+        const donorCampaigns: Record<string, Set<string>> = {};
+        for (const donation of allDonations) {
+          const donorAddr = donation.donor;
+          const proposalId = donation.proposalId?.toString?.() ?? String(donation.proposalId);
+          const amount = Number(donation.amount ?? 0);
+          if (amount > 0) {
+            if (!donorMap[donorAddr]) {
+              donorMap[donorAddr] = {
+                address: donorAddr,
+                totalDonated: 0,
+                campaignsSupported: 0,
+              };
+              donorCampaigns[donorAddr] = new Set();
+            }
+            donorMap[donorAddr].totalDonated += amount;
+            donorCampaigns[donorAddr].add(proposalId);
+          }
+        }
+        // Set campaignsSupported for each donor
+        for (const donorAddr in donorMap) {
+          donorMap[donorAddr].campaignsSupported = donorCampaigns[donorAddr].size;
+        }
+
+        const sortedCreators = Object.values(creatorMap).sort(
+          (a, b) => b.totalRaised - a.totalRaised
+        );
+        const sortedDonors = Object.values(donorMap).sort(
+          (a, b) => b.totalDonated - a.totalDonated
+        );
 
         setCreators(sortedCreators);
         setDonors(sortedDonors);
-
       } catch (error) {
-        console.error("Error fetching leaderboard data:", error);
+        console.error('Error fetching leaderboard data:', error);
       } finally {
         setLoading(false);
       }
@@ -101,9 +116,8 @@ const LeaderboardPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  const formatAddress = (addr: string) =>
+    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   const RenderRankIcon = ({ index }: { index: number }) => {
     if (index === 0) return <Trophy className="w-6 h-6 text-yellow-500" />;
@@ -119,6 +133,9 @@ const LeaderboardPage: React.FC = () => {
       </div>
     );
   }
+
+  // ... your JSX table part is unchanged ...
+  // (you can keep exactly what you already had for the return)
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -171,20 +188,18 @@ const LeaderboardPage: React.FC = () => {
                 <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">
                   {activeTab === 'creator' ? 'Campaigns Created' : 'Campaigns Supported'}
                 </th>
-                {/* NEW COLUMN HEADER FOR CREATORS */}
                 {activeTab === 'creator' && (
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">
                     Successful Campaigns
                   </th>
                 )}
                 <th className="px-6 py-4 text-right text-sm font-semibold text-gray-600">
-                  {activeTab === 'creator' ? 'Total Raised' : 'Total Donated'}
+                  {activeTab === 'creator' ? 'Total Raised (ALGO)' : 'Total Donated (ALGO)'}
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {activeTab === 'creator' ? (
-                // Creators List
                 creators.length > 0 ? (
                   creators.map((leader, index) => (
                     <tr key={leader.address} className="hover:bg-blue-50 transition-colors duration-150">
@@ -201,11 +216,10 @@ const LeaderboardPage: React.FC = () => {
                       <td className="px-6 py-4 text-center">
                         <span className="font-semibold text-gray-700">{leader.campaignCount}</span>
                       </td>
-                      {/* NEW COLUMN DATA FOR CREATORS */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center space-x-1 text-green-600">
-                           <CheckCircle2 className="w-4 h-4" />
-                           <span className="font-semibold">{leader.successfulCampaigns}</span>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="font-semibold">{leader.successfulCampaigns}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -223,7 +237,6 @@ const LeaderboardPage: React.FC = () => {
                   </tr>
                 )
               ) : (
-                // Donors List
                 donors.length > 0 ? (
                   donors.map((leader, index) => (
                     <tr key={leader.address} className="hover:bg-pink-50 transition-colors duration-150">
@@ -238,7 +251,9 @@ const LeaderboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="font-semibold text-gray-700">{leader.campaignsSupported}</span>
+                        <span className="font-semibold text-gray-700">
+                          {leader.campaignsSupported}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className="font-bold text-green-600">
